@@ -1,6 +1,6 @@
 import jwt
 from config import SECRET_KEY
-from flask import jsonify, request
+from flask import request
 
 
 def remove_bearer(token):
@@ -19,29 +19,30 @@ def generate_token(user_id):
 def get_user_login():
     token = request.headers.get('Authorization')
     if not token:
-        return jsonify({'mensagem': 'Token de autenticação necessário'}), 401
+        return {'mensagem': 'Token de autenticação necessário'}
 
     token = remove_bearer(token)
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
         id_usuario = payload['id_usuario']
         if id_usuario:
-            return jsonify({'mensagem': 'Token resgatado com sucesso', 'id_usuario': id_usuario}), 200
+            return {'mensagem': 'Token resgatado com sucesso', 'id': id_usuario}
         else:
-            return jsonify({'mensagem': 'Usuário não está logado'}), 401
+            return {'mensagem': 'Usuário não está logado'}
 
     except jwt.ExpiredSignatureError:
-        return jsonify({'mensagem': 'Token expirado'}), 401
+        return {'mensagem': 'Token expirado'}
 
     except jwt.InvalidTokenError:
-        return jsonify({'mensagem': 'Token inválido'}), 401
+        return {'mensagem': 'Token inválido'}
 
 
-def check_if_allowed(cargo="Coordenador"):
+def is_allowed(cargo="Coordenador"):
     response = get_user_login()
-    print(response[0].__dir__())
-    if response[1] != 200:
-        return response[0]
+    for keys in response.keys():
+        if 'id' == keys:
+            break
+    else:
+        return {'allowed': False, 'mensagem': response['mensagem']}
 
-    return response
-    # user = Usuario.query.filter_by(id=response.id_usuario)
+    return {'allowed': True, 'mensagem': response['mensagem'], 'id': response['id']}

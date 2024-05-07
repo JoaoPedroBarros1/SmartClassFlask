@@ -1,7 +1,7 @@
 from flask import jsonify, request, session
 from main import app, db
 from models import CargoChoices, Sala, Usuario, Curso
-from authentication import generate_token, check_if_allowed
+from authentication import generate_token, is_allowed
 
 
 # -------------- Cadastro, login e logout --------------
@@ -74,9 +74,8 @@ def login():
 
 @app.route('/logout', methods=['POST'])
 def logout():
-    response = check_if_allowed()
-    print(response)
-    return jsonify({'mensagem': 'Logout bem Sucedido', 'response': response})
+    response = is_allowed()
+    return jsonify(response)
 
 
 # ---------------- Criação e modificação de cursos --------------
@@ -87,12 +86,12 @@ def get_curso():
         cursos_dic = []
         for curso in cursos:
             curso_dic = {
-                'id_curso': curso.id,
+                'id': curso.id,
                 'nome': curso.nome,
-                'cargaHoraria': curso.carga_horaria,
-                'duracaoHoras': curso.duracao,
-                'diasSemana': curso.dias_da_semana,
-                'dataInicio': curso.data_de_inicio,
+                'carga_horaria': curso.carga_horaria,
+                'duracao': curso.duracao,
+                'dias_da_semana': curso.dias_da_semana,
+                'data_de_inicio': curso.data_de_inicio,
                 'horario': curso.horario
             }
             cursos_dic.append(curso_dic)
@@ -111,11 +110,12 @@ def post_curso():
         curso = request.json
         novo_curso = Curso(
             nome=curso.get('nome'),
-            carga_horaria=curso.get('cargaHoraria'),
-            duracao=curso.get('duracaoHoras'),
-            dias_da_semana=curso.get('diasSemana'),
-            data_de_inicio=curso.get('dataInicio'),
-            horario=curso.get('horario'),
+            carga_horaria=curso.get('carga_horaria'),
+            duracao=curso.get('duracao'),
+            dias_da_semana=curso.get('dias_da_semana'),
+            data_de_inicio=curso.get('data_de_inicio'),
+            id_professor=curso.get('id_professor'),
+            id_sala=curso.get('id_sala')
         )
 
         db.session.add(novo_curso)
