@@ -3,9 +3,9 @@ from main import db
 
 
 class CargoChoices(enum.Enum):
-    COORDENADOR = 'Coordenador',
-    PROFESSOR = 'Professor',
-    ALUNO = 'Aluno'
+    Coordenador = 'COORDENADOR'
+    Professor = 'PROFESSOR'
+    Aluno = 'ALUNO'
 
 
 class Usuario(db.Model):
@@ -24,10 +24,9 @@ class Sala(db.Model):
 class Curso(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     nome = db.Column(db.String(100))
-    carga_horaria = db.Column(db.Integer)
-    duracao = db.Column(db.Integer)
+    carga_horaria = db.Column(db.Time)
+    duracao = db.Column(db.Time)
     dias_da_semana = db.Column(db.Integer)
-    data_de_inicio = db.Column(db.Date)
-    horario = db.Column(db.Time)
+    data_de_inicio = db.Column(db.DATETIME)
     id_professor = db.Column(db.Integer)
     id_sala = db.Column(db.Integer)

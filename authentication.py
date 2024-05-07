@@ -1,6 +1,6 @@
 import jwt
-from flask import jsonify, request
 from config import SECRET_KEY
+from flask import jsonify, request
 
 
 def remove_bearer(token):
@@ -8,6 +8,12 @@ def remove_bearer(token):
         return token[len('Bearer '):]
     else:
         return token
+
+
+def generate_token(user_id):
+    payload = {'id_usuario': user_id}
+    token = jwt.encode(payload, SECRET_KEY, algorithm='HS256')
+    return token
 
 
 def get_user_login():
@@ -29,3 +35,13 @@ def get_user_login():
 
     except jwt.InvalidTokenError:
         return jsonify({'mensagem': 'Token inválido'}), 401
+
+
+def check_if_allowed(cargo="Coordenador"):
+    response = get_user_login()
+    print(response[0].__dir__())
+    if response[1] != 200:
+        return response[0]
+
+    return response
+    # user = Usuario.query.filter_by(id=response.id_usuario)

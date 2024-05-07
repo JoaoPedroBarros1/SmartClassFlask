@@ -1,6 +1,7 @@
 from flask import jsonify, request, session
 from main import app, db
-from models import Sala, Usuario, Curso
+from models import CargoChoices, Sala, Usuario, Curso
+from authentication import generate_token, check_if_allowed
 
 
 # -------------- Cadastro, login e logout --------------
@@ -13,7 +14,7 @@ def get_usuario():
             'email': usuario.email,
             'senha': usuario.senha,
             'nome': usuario.nome,
-            'cargo': usuario.cargo
+            'cargo': usuario.cargo.name
         }
         usuarios_dic.append(usuario_dic)
 
@@ -26,12 +27,20 @@ def get_usuario():
 @app.route('/usuario', methods=['POST'])
 def post_usuario():
     usuario = request.json
+    cargo_name = usuario.get('cargo').upper()
+
     novo_usuario = Usuario(
         email=usuario.get('email'),
         senha=usuario.get('senha'),
         nome=usuario.get('nome'),
-        cargo=usuario.get('cargo')
+        cargo=cargo_name
     )
+
+    for cargo in CargoChoices:
+        if novo_usuario.cargo == cargo.value:
+            break
+    else:
+        return jsonify(mensagem='Cargo Não Reconhecido'), 401
 
     db.session.add(novo_usuario)
     db.session.commit()
@@ -42,7 +51,7 @@ def post_usuario():
             'email': novo_usuario.email,
             'senha': novo_usuario.senha,
             'nome': novo_usuario.nome,
-            'cargo': novo_usuario.cargo
+            'cargo': novo_usuario.cargo.name
         }
     )
 
@@ -56,16 +65,18 @@ def login():
     usuario = Usuario.query.filter_by(email=email).first()
 
     if usuario and usuario.senha == senha:
-        session['id_usuario'] = usuario.id
-        return jsonify({'mensagem': 'Login com sucesso'}), 200
+        token = generate_token(usuario.id)
+        return jsonify({'mensagem': 'Login com sucesso', 'token': token}), 200
+
     else:
-        return jsonify({'mensagem': 'Email ou senha inválido'})
+        return jsonify({'mensagem': 'Email ou senha inválido'}), 401
 
 
 @app.route('/logout', methods=['POST'])
 def logout():
-    session.pop('id_usuario', None)
-    return jsonify({'mensagem': 'Logout bem Sucedido'})
+    response = check_if_allowed()
+    print(response)
+    return jsonify({'mensagem': 'Logout bem Sucedido', 'response': response})
 
 
 # ---------------- Criação e modificação de cursos --------------
