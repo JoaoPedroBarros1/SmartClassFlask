@@ -49,6 +49,32 @@ LOCK TABLES `curso` WRITE;
 UNLOCK TABLES;
 
 --
+-- Table structure for table `matricula`
+--
+
+DROP TABLE IF EXISTS `matricula`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `matricula` (
+  `id_usuario` int(11) NOT NULL,
+  `id_curso` int(11) NOT NULL,
+  KEY `id_usuario` (`id_usuario`),
+  KEY `id_curso` (`id_curso`),
+  CONSTRAINT `matricula_ibfk_1` FOREIGN KEY (`id_usuario`) REFERENCES `usuario` (`id`),
+  CONSTRAINT `matricula_ibfk_2` FOREIGN KEY (`id_curso`) REFERENCES `curso` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `matricula`
+--
+
+LOCK TABLES `matricula` WRITE;
+/*!40000 ALTER TABLE `matricula` DISABLE KEYS */;
+/*!40000 ALTER TABLE `matricula` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Table structure for table `sala`
 --
 
@@ -85,7 +111,7 @@ CREATE TABLE `usuario` (
   `nome` varchar(100) NOT NULL,
   `cargo` enum('Coordenador','Professor','Aluno') NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -94,7 +120,7 @@ CREATE TABLE `usuario` (
 
 LOCK TABLES `usuario` WRITE;
 /*!40000 ALTER TABLE `usuario` DISABLE KEYS */;
-INSERT INTO `usuario` VALUES (1,'coordenador@gmail.com','1234','Coordenador','Coordenador');
+INSERT INTO `usuario` VALUES (1,'coordenador@gmail.com','1234','Coordenador','Coordenador'),(2,'aluno@gmail.com','1234','Aluno','Aluno'),(3,'professor@gmail.com','1234','Professor','Professor');
 /*!40000 ALTER TABLE `usuario` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
@@ -107,4 +133,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2024-05-07 15:06:32
+-- Dump completed on 2024-05-13 11:26:08
