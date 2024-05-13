@@ -34,4 +34,4 @@ class Curso(db.Model):
 
 class Matricula(db.Model):
     id_usuario = db.Column(db.Integer)
-    id_sala = db.Column(db.Integer)
+    id_curso = db.Column(db.Integer)

@@ -337,16 +337,18 @@ def delete_sala(id_sala):
 # --------------------- Gerenciamento das matrículas ------------------------
 @app.route("/matricula", methods=['GET'])
 def get_matricula():
-    response = is_allowed(['COORDENADOR'])
+    response = is_allowed(['ALUNO', 'PROFESSOR', 'COORDENADOR'])
     if not response['allowed']:
         return jsonify(response)
 
     matriculas = Matricula.query.filter_by(id_usuario=response.usuario.id).all()
     matriculas_dic = []
     for matricula in matriculas:
+        query_matricula = Matricula.query.filter_by(id_usuario=response.usuario.id, id_curso=matricula.id_curso)
+
         matricula_dic = {
             'id_usuario': matricula.id_usuario,
-            'id_sala': matricula.id_sala,
+            'id_curso': matricula.id_curso,
         }
         matriculas_dic.append(matricula_dic)
 
@@ -364,7 +366,7 @@ def post_matricula():
 
     matricula = request.json
     nova_matricula = Matricula(
-        id_sala=matricula.get('id_sala'),
+        id_curso=matricula.get('id_curso'),
         id_usuario=matricula.get('id_usuario')
     )
 
@@ -374,7 +376,7 @@ def post_matricula():
     return jsonify(
         mensagem='Matrícula cadastrada com sucesso',
         matricula={
-            'id_sala': nova_matricula.id_sala,
+            'id_curso': nova_matricula.id_curso,
             'id_usuario': nova_matricula.id_usuario,
         }
     )
