@@ -3,6 +3,7 @@ from flask import jsonify, request
 from main import app, db
 from models import CargoChoices, Sala, Usuario, Curso, Matricula
 from authentication import generate_token, is_allowed
+from feriados import handle_aulas
 
 
 # -------------- GET self --------------
@@ -168,15 +169,33 @@ def post_curso():
         return jsonify(response)
 
     curso = request.json
+    id_professor = curso.get('id_professor')
+    professor = Usuario.query.filter_by(
+        id=id_professor,
+        cargo='PROFESSOR').first()
+    if not professor:
+        return jsonify({'mensagem': 'Não é válido'}),
+
     novo_curso = Curso(
         nome=curso.get('nome'),
         carga_horaria=curso.get('carga_horaria'),
         duracao=curso.get('duracao'),
         dias_da_semana=curso.get('dias_da_semana'),
         data_de_inicio=curso.get('data_de_inicio'),
-        id_professor=curso.get('id_professor'),
+        id_professor=id_professor,
         id_sala=curso.get('id_sala')
     )
+
+    conflito_horario = Curso.query.filter(
+        (
+            Curso.id_professor == novo_curso.id_professor,
+            Curso.dias_da_semana == novo_curso.dias_da_semana,
+            Curso.horario == novo_curso.horario
+        )
+    ).first()
+
+    if conflito_horario:
+        return jsonify({'mensagem': 'Conflito de horário para o professor'}),
 
     db.session.add(novo_curso)
     db.session.commit()
@@ -342,19 +361,23 @@ def get_matricula():
         return jsonify(response)
 
     matriculas = Matricula.query.filter_by(id_usuario=response.usuario.id).all()
-    matriculas_dic = []
+    matriculas_dic = {}
     for matricula in matriculas:
-        query_matricula = Matricula.query.filter_by(id_usuario=response.usuario.id, id_curso=matricula.id_curso)
+        curso = Curso.query.filter_by(id=matricula.id_curso).first()
 
+        dias_letivos = handle_aulas(curso=curso)
         matricula_dic = {
-            'id_usuario': matricula.id_usuario,
-            'id_curso': matricula.id_curso,
+            'nome': curso.nome,
+            'id_professor': curso.id_professor,
+            'id_sala': curso.id_sala,
+            'duracao': curso.duracao,
+            'dias_letivos': dias_letivos
         }
-        matriculas_dic.append(matricula_dic)
+        matriculas_dic[matricula.id_curso] = matricula_dic
 
     return jsonify(
         mensagem='Lista de matrículas',
-        salas=matriculas_dic
+        matriculas=matriculas_dic
     )
 
 
@@ -364,11 +387,25 @@ def post_matricula():
     if not response['allowed']:
         return jsonify(response)
 
+    matricula_data = request.json
+    id_usuario = matricula_data.get('id_usuario')
+    usuario = Usuario.query.filter_by(
+        id=id_usuario).first()
+    if usuario.cargo != 'ALUNO':
+        return jsonify({'mensagem': 'Você só pode matricular alunos'}),
+
+
     matricula = request.json
     nova_matricula = Matricula(
         id_curso=matricula.get('id_curso'),
         id_usuario=matricula.get('id_usuario')
     )
+
+    matricula_existente = matricula.query.filter_by(
+        id_curso=nova_matricula.id_curso,
+        id_usuario=nova_matricula.id_usuario).first()
+    if matricula_existente:
+        return jsonify({'mensagem': 'Aluno já matriculado'})
 
     db.session.add(nova_matricula)
     db.session.commit()
@@ -388,7 +425,9 @@ def delete_matricula(id_curso):
     if not response['allowed']:
         return jsonify(response)
 
-    matricula = Matricula.query.filter_by(id_usuario=response.usuario.id, id_curso=id_curso)
+    matricula = Matricula.query.filter_by(
+        id_usuario=response.usuario.id,
+        id_curso=id_curso).first()
 
     if matricula:
         db.session.delete(matricula)
@@ -398,15 +437,3 @@ def delete_matricula(id_curso):
     else:
         return jsonify({'mensagem': 'Matrícula não encontrada'})
 
-
-# --------------------- Feriados ------------------------
-
-
-@app.route("/feriados/<string:data>", methods=['GET'])
-def get_feriados(data):
-    response = requests.get('http://date.nager.at/api/v3/PublicHolidays/'+data+'/BR')
-    if response.status_code == 200:
-        feriados = response.json()
-        return jsonify(feriados)
-    else:
-        return jsonify({'mensagem': 'Falha ao obter feriados'})
