@@ -30,3 +30,8 @@ class Curso(db.Model):
     data_de_inicio = db.Column(db.DATETIME)
     id_professor = db.Column(db.Integer)
     id_sala = db.Column(db.Integer)
+
+
+class Matricula(db.Model):
+    id_usuario = db.Column(db.Integer)
+    id_sala = db.Column(db.Integer)

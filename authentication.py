@@ -1,6 +1,7 @@
 import jwt
 from config import SECRET_KEY
 from flask import request
+from models import Usuario
 
 
 def remove_bearer(token):
@@ -25,10 +26,15 @@ def get_user_login():
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
         id_usuario = payload['id_usuario']
-        if id_usuario:
-            return {'mensagem': 'Token resgatado com sucesso', 'id': id_usuario}
-        else:
-            return {'mensagem': 'Usuário não está logado'}
+
+        if not id_usuario:
+            return {'mensagem': 'ID não enviado'}
+
+        user = Usuario.query.filter_by(id=id_usuario).first()
+        if not user:
+            return {'mensagem': 'Usuário não existe'}
+
+        return {'mensagem': 'Usuário encontrado', 'user': user}
 
     except jwt.ExpiredSignatureError:
         return {'mensagem': 'Token expirado'}
@@ -37,12 +43,25 @@ def get_user_login():
         return {'mensagem': 'Token inválido'}
 
 
-def is_allowed(cargo="Coordenador"):
+def is_allowed(allowed_list: list):
     response = get_user_login()
     for keys in response.keys():
-        if 'id' == keys:
+        if 'user' == keys:
             break
     else:
         return {'allowed': False, 'mensagem': response['mensagem']}
 
-    return {'allowed': True, 'mensagem': response['mensagem'], 'id': response['id']}
+    user = response['user']
+
+    user_cargo_value = user.cargo.value
+
+    if user_cargo_value not in allowed_list:
+        return {'allowed': False, 'mensagem': 'Usuário não possui cargo necessário'}
+
+    usuario = {
+        'email': user.nome,
+        'senha': user.senha,
+        'nome': user.nome,
+        'cargo': user.cargo.name
+    }
+    return {'allowed': True, 'mensagem': response['mensagem'], 'usuario': usuario}
