@@ -1,4 +1,5 @@
 import enum
+import requests
 
 
 class WeekDays(enum.Enum):
@@ -12,13 +13,12 @@ class WeekDays(enum.Enum):
 
 
 def handle_aulas(curso):
-    response = requests.get('http://date.nager.at/api/v3/PublicHolidays/' + data + '/BR')
+    print(curso.data_de_inicio.__dir__)
+    response = requests.get('http://date.nager.at/api/v3/PublicHolidays/' + curso.data_de_inicio.year() + '/BR')
     if response.status_code != 200:
-        return {'mensagem': 'Falha ao obter feriados'}
-        feriados = response.json()
-        return jsonify(feriados)
-    else:
-        return jsonify({'mensagem': 'Falha ao obter feriados'})
+        return {'error': True, 'mensagem': 'Falha ao obter feriados'}
+
+    feriados = response.json()
     dias_letivos = []
 
     qtd_dias_por_semana = 1
@@ -33,7 +33,9 @@ def handle_aulas(curso):
         dias_letivos.append(date)
         dia += 1
 
-    return dias_letivos
+    return {'error': False,
+            'mensagem': 'Dias letivos retornados',
+            'dias_letivos': dias_letivos}
 
 
 # TERCA QUINTA SEXTA SABADO - 116

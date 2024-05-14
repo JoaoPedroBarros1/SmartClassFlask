@@ -1,3 +1,5 @@
+CREATE DATABASE  IF NOT EXISTS `gerenciador` /*!40100 DEFAULT CHARACTER SET latin1 COLLATE latin1_swedish_ci */;
+USE `gerenciador`;
 -- MySQL dump 10.13  Distrib 8.0.36, for Win64 (x86_64)
 --
 -- Host: 127.0.0.1    Database: gerenciador
@@ -58,7 +60,7 @@ DROP TABLE IF EXISTS `matricula`;
 CREATE TABLE `matricula` (
   `id_usuario` int(11) NOT NULL,
   `id_curso` int(11) NOT NULL,
-  KEY `id_usuario` (`id_usuario`),
+  PRIMARY KEY (`id_usuario`,`id_curso`),
   KEY `id_curso` (`id_curso`),
   CONSTRAINT `matricula_ibfk_1` FOREIGN KEY (`id_usuario`) REFERENCES `usuario` (`id`),
   CONSTRAINT `matricula_ibfk_2` FOREIGN KEY (`id_curso`) REFERENCES `curso` (`id`)
@@ -133,4 +135,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2024-05-13 13:38:33
+-- Dump completed on 2024-05-14  8:01:05

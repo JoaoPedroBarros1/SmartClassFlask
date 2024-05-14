@@ -1,4 +1,3 @@
-import requests
 from flask import jsonify, request
 from main import app, db
 from models import CargoChoices, Sala, Usuario, Curso, Matricula
@@ -48,7 +47,7 @@ def get_self_cursos():
     )
 
 
-# -------------- Cadastro, login e logout --------------
+# -------------- Cadastro e login de usuários --------------
 @app.route("/usuario", methods=['GET'])
 def get_usuario():
     response = is_allowed(['COORDENADOR'])
@@ -394,7 +393,6 @@ def post_matricula():
     if usuario.cargo != 'ALUNO':
         return jsonify({'mensagem': 'Você só pode matricular alunos'}),
 
-
     matricula = request.json
     nova_matricula = Matricula(
         id_curso=matricula.get('id_curso'),
@@ -419,7 +417,7 @@ def post_matricula():
     )
 
 
-@app.route('/sala/<int:id_curso>', methods=['DELETE'])
+@app.route('/matricula/<int:id_curso>', methods=['DELETE'])
 def delete_matricula(id_curso):
     response = is_allowed(['COORDENADOR'])
     if not response['allowed']:
@@ -436,4 +434,3 @@ def delete_matricula(id_curso):
 
     else:
         return jsonify({'mensagem': 'Matrícula não encontrada'})
-
