@@ -5,6 +5,46 @@ from authentication import generate_token, is_allowed
 from feriados import handle_aulas
 
 
+# {
+#     "nome": "Técnico em Desenvolvimento de Sistemas",
+#     "carga_horaria": "",
+#     "duracao": "",
+#     "dias_da_semana": "",
+#     "data_de_inicio": "",
+#     "id_professor": "",
+#     "id_sala": ""
+# }
+
+
+# -------------- GET usuários (Aluno, Professor ou Coordenador) --------------
+@app.route("/usuario/<string:nome_cargo>", methods=['GET'])
+def get_cargos(nome_cargo):
+    response = is_allowed(['COORDENADOR'])
+    if not response['allowed']:
+        return jsonify(response)
+
+    usuarios = Usuario.query.filter_by(cargo=nome_cargo).all()
+
+    if not usuarios:
+        return jsonify(mensagem='Não há usuários neste cargo')
+
+    usuarios_dic = []
+    for usuario in usuarios:
+        usuario_dic = {
+            'id': usuario.id,
+            'email': usuario.email,
+            'senha': usuario.senha,
+            'nome': usuario.nome,
+            'cargo': usuario.cargo.name
+        }
+        usuarios_dic.append(usuario_dic)
+
+    return jsonify(
+        mensagem='Lista do cargo: '+nome_cargo,
+        usuarios=usuarios_dic
+    )
+
+
 # -------------- GET self --------------
 @app.route("/self/usuario", methods=['GET'])
 def get_self_usuario():
@@ -12,11 +52,9 @@ def get_self_usuario():
     if not response['allowed']:
         return jsonify(response)
 
-    usuario = Usuario.query.filter_by(id=response.usuario.id).first()
-
     return jsonify(
-        mensagem='Lista de Usuarios',
-        usuario=usuario
+        mensagem='Informações do seu usuário',
+        usuario=response['usuario']
     )
 
 
@@ -26,7 +64,7 @@ def get_self_cursos():
     if not response['allowed']:
         return jsonify(response)
 
-    id_cursos = Matricula.query.filter_by(id_usuario=response.usuario.id).all()
+    id_cursos = Matricula.query.filter_by(id_usuario=response['usuario']['id']).all()
     cursos = []
     for id_curso in id_cursos:
         curso = Curso.query.filter_by(id=id_curso).first()
@@ -42,7 +80,7 @@ def get_self_cursos():
         cursos.append(curso_dic)
 
     return jsonify(
-        mensagem='Lista de Usuarios',
+        mensagem='Lista de cursos matriculados',
         cursos=cursos
     )
 
@@ -58,6 +96,7 @@ def get_usuario():
     usuarios_dic = []
     for usuario in usuarios:
         usuario_dic = {
+            'id': usuario.id,
             'email': usuario.email,
             'senha': usuario.senha,
             'nome': usuario.nome,
@@ -119,19 +158,21 @@ def login():
 
     usuario = Usuario.query.filter_by(email=email).first()
 
-    if usuario and usuario.senha == senha:
-        token = generate_token(usuario.id)
+    if not usuario:
+        return jsonify({'mensagem': 'Email inválido'}), 401
 
-        user = {
-            'email': usuario.email,
-            'senha': usuario.senha,
-            'nome': usuario.nome,
-            'cargo': usuario.cargo
-        }
-        return jsonify({'mensagem': 'Login com sucesso', 'token': token, 'usuario': user}), 200
+    if usuario.senha != senha:
+        return jsonify({'mensagem': 'Senha inválida'}), 401
 
-    else:
-        return jsonify({'mensagem': 'Email ou senha inválido'}), 401
+    token = generate_token(usuario.id)
+
+    user = {
+        'email': usuario.email,
+        'senha': usuario.senha,
+        'nome': usuario.nome,
+        'cargo': usuario.cargo.name
+    }
+    return jsonify({'mensagem': 'Login com sucesso', 'token': token, 'usuario': user}), 200
 
 
 # ---------------- Criação e modificação de cursos --------------
@@ -147,11 +188,12 @@ def get_curso():
         curso_dic = {
             'id': curso.id,
             'nome': curso.nome,
-            'carga_horaria': curso.carga_horaria,
-            'duracao': curso.duracao,
             'dias_da_semana': curso.dias_da_semana,
-            'data_de_inicio': curso.data_de_inicio,
-            'horario': curso.horario
+            'id_professor': curso.id_professor,
+            'id_sala': curso.id_sala,
+            'carga_horaria': curso.carga_horaria.isoformat(),
+            'duracao': curso.duracao.isoformat(),
+            'data_de_inicio': curso.data_de_inicio.isoformat(),
         }
         cursos_dic.append(curso_dic)
 
@@ -168,33 +210,25 @@ def post_curso():
         return jsonify(response)
 
     curso = request.json
-    id_professor = curso.get('id_professor')
-    professor = Usuario.query.filter_by(
-        id=id_professor,
-        cargo='PROFESSOR').first()
-    if not professor:
-        return jsonify({'mensagem': 'Não é válido'}),
-
     novo_curso = Curso(
         nome=curso.get('nome'),
         carga_horaria=curso.get('carga_horaria'),
         duracao=curso.get('duracao'),
         dias_da_semana=curso.get('dias_da_semana'),
         data_de_inicio=curso.get('data_de_inicio'),
-        id_professor=id_professor,
+        id_professor=curso.get('id_professor'),
         id_sala=curso.get('id_sala')
     )
 
-    conflito_horario = Curso.query.filter(
-        (
-            Curso.id_professor == novo_curso.id_professor,
-            Curso.dias_da_semana == novo_curso.dias_da_semana,
-            Curso.horario == novo_curso.horario
-        )
-    ).first()
+    professor = Usuario.query.filter_by(
+        id=novo_curso.id_professor,
+        cargo=CargoChoices.Professor).first()
+    if not professor:
+        return jsonify({'mensagem': 'Professor não existe'})
 
-    if conflito_horario:
-        return jsonify({'mensagem': 'Conflito de horário para o professor'}),
+    sala = Sala.query.filter_by(id=novo_curso.id_sala).first()
+    if not sala:
+        return jsonify({'mensagem': 'Sala não existe'})
 
     db.session.add(novo_curso)
     db.session.commit()
@@ -202,11 +236,14 @@ def post_curso():
     return jsonify(
         mensagem='Curso Cadastrado com Sucesso',
         curso={
-            'id_curso': novo_curso.id,
+            'id': novo_curso.id,
             'nome': novo_curso.nome,
-            'cargaHoraria': novo_curso.carga_horaria,
-            'duracaoHoras': novo_curso.duracao,
-            'diasSemana': novo_curso.dias_da_semana,
+            'carga_horaria': novo_curso.carga_horaria.isoformat(),
+            'duracao': novo_curso.duracao.isoformat(),
+            'dias_da_semana': novo_curso.dias_da_semana,
+            'data_de_inicio': novo_curso.data_de_inicio.isoformat(),
+            'id_professor': novo_curso.id_professor,
+            'id_sala': novo_curso.id_sala
         }
     )
 
@@ -317,22 +354,21 @@ def put_sala(id_sala):
 
     sala = Sala.query.get(id_sala)
 
-    if sala:
-        data = request.json
-        sala.nome = data.get('nome', sala.nome)
-
-        db.session.commit()
-
-        return jsonify(
-            mensagem='Sala atualizada com sucesso',
-            sala={
-                'id_sala': sala.id,
-                'nome': sala.nome,
-            }
-        )
-
-    else:
+    if not sala:
         return jsonify({'mensagem': 'Sala não encontrada'})
+
+    data = request.json
+    sala.nome = data.get('nome', sala.nome)
+
+    db.session.commit()
+
+    return jsonify(
+        mensagem='Sala atualizada com sucesso',
+        sala={
+            'id_sala': sala.id,
+            'nome': sala.nome,
+        }
+    )
 
 
 @app.route('/sala/<int:id_sala>', methods=['DELETE'])
@@ -343,23 +379,36 @@ def delete_sala(id_sala):
 
     sala = Sala.query.get(id_sala)
 
-    if sala:
-        db.session.delete(sala)
-        db.session.commit()
-        return jsonify({'mensagem': 'Sala excluída com sucesso'})
-
-    else:
+    if not sala:
         return jsonify({'mensagem': 'Sala não encontrada'})
+
+    cursos = Curso.query.filter_by(id_sala=id_sala).all()
+    if cursos:
+        cursos_dict = []
+        for curso in cursos:
+            curso_dict = {
+                'id': curso.id,
+                'nome': curso.nome
+            }
+            cursos_dict.append(curso_dict)
+
+        return jsonify({
+            'mensagem': 'Essa sala está sendo utilizada por algum curso',
+            'cursos': cursos_dict})
+
+    db.session.delete(sala)
+    db.session.commit()
+    return jsonify({'mensagem': 'Sala excluída com sucesso'})
 
 
 # --------------------- Gerenciamento das matrículas ------------------------
 @app.route("/matricula", methods=['GET'])
 def get_matricula():
-    response = is_allowed(['ALUNO', 'PROFESSOR', 'COORDENADOR'])
+    response = is_allowed(['COORDENADOR'])
     if not response['allowed']:
         return jsonify(response)
 
-    matriculas = Matricula.query.filter_by(id_usuario=response.usuario.id).all()
+    matriculas = Matricula.query.filter_by(id_usuario=response['usuario']['id']).all()
     matriculas_dic = {}
     for matricula in matriculas:
         curso = Curso.query.filter_by(id=matricula.id_curso).first()
@@ -374,10 +423,8 @@ def get_matricula():
         }
         matriculas_dic[matricula.id_curso] = matricula_dic
 
-    return jsonify(
-        mensagem='Lista de matrículas',
-        matriculas=matriculas_dic
-    )
+    return jsonify({"mensagem": 'Lista de matrículas',
+                    "matriculas": matriculas_dic})
 
 
 @app.route('/matricula', methods=['POST'])
@@ -386,35 +433,35 @@ def post_matricula():
     if not response['allowed']:
         return jsonify(response)
 
-    matricula_data = request.json
-    id_usuario = matricula_data.get('id_usuario')
-    usuario = Usuario.query.filter_by(
-        id=id_usuario).first()
-    if usuario.cargo != 'ALUNO':
-        return jsonify({'mensagem': 'Você só pode matricular alunos'}),
-
     matricula = request.json
     nova_matricula = Matricula(
         id_curso=matricula.get('id_curso'),
         id_usuario=matricula.get('id_usuario')
     )
 
+    usuario = Usuario.query.filter_by(
+        id=nova_matricula.id_usuario, cargo=CargoChoices.Aluno).first()
+
+    if not usuario:
+        return jsonify({'mensagem': 'Aluno não existe'})
+
     matricula_existente = matricula.query.filter_by(
         id_curso=nova_matricula.id_curso,
         id_usuario=nova_matricula.id_usuario).first()
+
     if matricula_existente:
         return jsonify({'mensagem': 'Aluno já matriculado'})
 
     db.session.add(nova_matricula)
     db.session.commit()
 
-    return jsonify(
-        mensagem='Matrícula cadastrada com sucesso',
-        matricula={
+    return jsonify({
+        'mensagem': 'Matrícula cadastrada com sucesso',
+        'matricula': {
             'id_curso': nova_matricula.id_curso,
             'id_usuario': nova_matricula.id_usuario,
         }
-    )
+    })
 
 
 @app.route('/matricula/<int:id_curso>', methods=['DELETE'])
