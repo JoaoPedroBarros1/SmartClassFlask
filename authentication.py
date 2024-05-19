@@ -17,7 +17,7 @@ def generate_token(user_id):
     return token
 
 
-def get_user_login():
+def get_user_login() -> dict:
     token = request.headers.get('Authorization')
     if not token:
         return {'sucesso': False, 'mensagem': 'Token de autenticação necessário'}
@@ -43,7 +43,7 @@ def get_user_login():
         return {'sucesso': False, 'mensagem': 'Token inválido'}
 
 
-def is_allowed(allowed_list: list):
+def is_allowed(allowed_list: list) -> dict:
     response = get_user_login()
     if not response['sucesso']:
         return {'allowed': False, 'mensagem': response['mensagem']}

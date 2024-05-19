@@ -471,7 +471,7 @@ def delete_matricula(id_curso):
         return jsonify(response)
 
     matricula = Matricula.query.filter_by(
-        id_usuario=response.usuario.id,
+        id_usuario=response['usuario']['id'],
         id_curso=id_curso).first()
 
     if matricula:
