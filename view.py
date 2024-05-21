@@ -1,51 +1,157 @@
 from flask import jsonify, request
 from main import app, db
-from models import CargoChoices, Sala, Usuario, Curso, Matricula
+from models import CargoChoices, Sala, Usuario, Curso, Matricula, Aluno, Professor, Coordenador, Reposicao, NaoLetivo, Feriado
 from authentication import generate_token, is_allowed
-from feriados import handle_aulas
 
 
-# {
-#     "nome": "Técnico em Desenvolvimento de Sistemas",
-#     "carga_horaria": "",
-#     "duracao": "",
-#     "dias_da_semana": "",
-#     "data_de_inicio": "",
-#     "id_professor": "",
-#     "id_sala": ""
-# }
+# -------------- Rotas relacionadas aos usuários (Aluno, Professor ou Coordenador) --------------
 
-
-# -------------- GET usuários (Aluno, Professor ou Coordenador) --------------
-@app.route("/usuario/<string:nome_cargo>", methods=['GET'])
-def get_cargos(nome_cargo):
+# Rotas relacionadas aos alunos
+@app.route("/aluno", methods=['GET'])
+def get_alunos():
     response = is_allowed(['COORDENADOR'])
     if not response['allowed']:
         return jsonify(response)
 
-    usuarios = Usuario.query.filter_by(cargo=nome_cargo).all()
+    alunos = Aluno.query.all()
 
-    if not usuarios:
-        return jsonify(mensagem='Não há usuários neste cargo')
+    if not alunos:
+        return jsonify(mensagem='Não há alunos cadastrados')
 
-    usuarios_dic = []
-    for usuario in usuarios:
-        usuario_dic = {
-            'id': usuario.id,
-            'email': usuario.email,
-            'senha': usuario.senha,
-            'nome': usuario.nome,
-            'cargo': usuario.cargo.name
+    alunos_dic = []
+    for aluno in alunos:
+        aluno_dic = {
+            'id': aluno.id,
+            'id_usuario': aluno.id_usuario,
         }
-        usuarios_dic.append(usuario_dic)
+        alunos_dic.append(aluno_dic)
 
     return jsonify(
-        mensagem='Lista do cargo: '+nome_cargo,
-        usuarios=usuarios_dic
+        mensagem='Lista de alunos',
+        alunos=alunos_dic
     )
 
+@app.route("/aluno/<int:id_aluno>", methods=['GET'])
+def get_aluno(id_aluno):
+    response = is_allowed(['COORDENADOR'])
+    if not response['allowed']:
+        return jsonify(response)
 
-# -------------- GET self --------------
+    aluno = Aluno.query.get(id_aluno)
+
+    if not aluno:
+        return jsonify(mensagem='Aluno não encontrado')
+
+    aluno_info = {
+        'id': aluno.id,
+        'id_usuario': aluno.id_usuario,
+    }
+
+    return jsonify(
+        mensagem='Informações do aluno',
+        aluno=aluno_info
+    )
+
+# Rotas relacionadas aos professores
+@app.route("/professor", methods=['GET'])
+def get_professores():
+    response = is_allowed(['COORDENADOR'])
+    if not response['allowed']:
+        return jsonify(response)
+
+    professores = Professor.query.all()
+
+    if not professores:
+        return jsonify(mensagem='Não há professores cadastrados')
+
+    professores_dic = []
+    for professor in professores:
+        professor_dic = {
+            'id': professor.id,
+            'id_usuario': professor.id_usuario,
+            'start_turno': professor.start_turno,
+            'end_turno': professor.end_turno,
+            'dias_da_semana': professor.dias_da_semana,
+        }
+        professores_dic.append(professor_dic)
+
+    return jsonify(
+        mensagem='Lista de professores',
+        professores=professores_dic
+    )
+
+@app.route("/professor/<int:id_professor>", methods=['GET'])
+def get_professor(id_professor):
+    response = is_allowed(['COORDENADOR'])
+    if not response['allowed']:
+        return jsonify(response)
+
+    professor = Professor.query.get(id_professor)
+
+    if not professor:
+        return jsonify(mensagem='Professor não encontrado')
+
+    professor_info = {
+        'id': professor.id,
+        'id_usuario': professor.id_usuario,
+        'start_turno': professor.start_turno,
+        'end_turno': professor.end_turno,
+        'dias_da_semana': professor.dias_da_semana,
+    }
+
+    return jsonify(
+        mensagem='Informações do professor',
+        professor=professor_info
+    )
+
+# Rotas relacionadas aos coordenadores
+@app.route("/coordenador", methods=['GET'])
+def get_coordenadores():
+    response = is_allowed(['COORDENADOR'])
+    if not response['allowed']:
+        return jsonify(response)
+
+    coordenadores = Coordenador.query.all()
+
+    if not coordenadores:
+        return jsonify(mensagem='Não há coordenadores cadastrados')
+
+    coordenadores_dic = []
+    for coordenador in coordenadores:
+        coordenador_dic = {
+            'id': coordenador.id,
+            'id_usuario': coordenador.id_usuario,
+        }
+        coordenadores_dic.append(coordenador_dic)
+
+    return jsonify(
+        mensagem='Lista de coordenadores',
+        coordenadores=coordenadores_dic
+    )
+
+@app.route("/coordenador/<int:id_coordenador>", methods=['GET'])
+def get_coordenador(id_coordenador):
+    response = is_allowed(['COORDENADOR'])
+    if not response['allowed']:
+        return jsonify(response)
+
+    coordenador = Coordenador.query.get(id_coordenador)
+
+    if not coordenador:
+        return jsonify(mensagem='Coordenador não encontrado')
+
+    coordenador_info = {
+        'id': coordenador.id,
+        'id_usuario': coordenador.id_usuario,
+    }
+
+    return jsonify(
+        mensagem='Informações do coordenador',
+        coordenador=coordenador_info
+    )
+
+# ------------------ Rotas relacionadas ao próprio usuário ------------------
+
 @app.route("/self/usuario", methods=['GET'])
 def get_self_usuario():
     response = is_allowed(['ALUNO', 'PROFESSOR'])
@@ -56,7 +162,6 @@ def get_self_usuario():
         mensagem='Informações do seu usuário',
         usuario=response['usuario']
     )
-
 
 @app.route("/self/curso", methods=['GET'])
 def get_self_cursos():
@@ -84,8 +189,8 @@ def get_self_cursos():
         cursos=cursos
     )
 
+# ---------------------- Cadastro e login de usuários ----------------------
 
-# -------------- Cadastro e login de usuários --------------
 @app.route("/usuario", methods=['GET'])
 def get_usuario():
     response = is_allowed(['COORDENADOR'])
@@ -108,7 +213,6 @@ def get_usuario():
         mensagem='Lista de Usuarios',
         usuarios=usuarios_dic
     )
-
 
 @app.route('/usuario', methods=['POST'])
 def post_usuario():
@@ -145,7 +249,6 @@ def post_usuario():
         }
     )
 
-
 @app.route('/login', methods=['POST'])
 def login():
     response = is_allowed(['ALUNO', 'PROFESSOR', 'COORDENADOR'])
@@ -174,8 +277,8 @@ def login():
     }
     return jsonify({'mensagem': 'Login com sucesso', 'token': token, 'usuario': user}), 200
 
+# -------------------- Criação e modificação de cursos ----------------------
 
-# ---------------- Criação e modificação de cursos --------------
 @app.route("/curso", methods=['GET'])
 def get_curso():
     response = is_allowed(['COORDENADOR'])
@@ -201,7 +304,6 @@ def get_curso():
         mensagem='Lista de cursos',
         cursos=cursos_dic
     )
-
 
 @app.route('/curso', methods=['POST'])
 def post_curso():
@@ -247,7 +349,6 @@ def post_curso():
         }
     )
 
-
 @app.route('/curso/<int:id_curso>', methods=['PUT'])
 def put_curso(id_curso):
     response = is_allowed(['COORDENADOR'])
@@ -270,19 +371,18 @@ def put_curso(id_curso):
         return jsonify(
             mensagem='Curso atualizado com sucesso',
             curso={
-                'id_curso': curso.id,
+                'id': curso.id,
                 'nome': curso.nome,
-                'cargaHoraria': curso.carga_horaria,
-                'duracaoHoras': curso.duracao,
-                'diasSemana': curso.dias_da_semana,
-                'dataInicio': curso.data_de_inicio,
-                'horario': curso.horario
+                'carga_horaria': curso.carga_horaria.isoformat(),
+                'duracao': curso.duracao.isoformat(),
+                'dias_da_semana': curso.dias_da_semana,
+                'data_de_inicio': curso.data_de_inicio.isoformat(),
+                'id_professor': curso.id_professor,
+                'id_sala': curso.id_sala
             }
         )
 
-    else:
-        return jsonify({'mensagem': 'Curso não encontrado'})
-
+    return jsonify(mensagem='Curso não encontrado'), 404
 
 @app.route('/curso/<int:id_curso>', methods=['DELETE'])
 def delete_curso(id_curso):
@@ -295,189 +395,425 @@ def delete_curso(id_curso):
     if curso:
         db.session.delete(curso)
         db.session.commit()
-        return jsonify({'mensagem': 'Curso excluído com sucesso'})
 
-    else:
-        return jsonify({'mensagem': 'Curso não encontrado'})
+        return jsonify(mensagem='Curso removido com sucesso')
 
-
-# --------------------- Criação e modificação de Salas ------------------------
-@app.route("/sala", methods=['GET'])
-def get_sala():
-    response = is_allowed(['COORDENADOR'])
-    if not response['allowed']:
-        return jsonify(response)
-
-    salas = Sala.query.all()
-    salas_dic = []
-    for sala in salas:
-        sala_dic = {
-            'id_sala': sala.id,
-            'nome': sala.nome,
-        }
-        salas_dic.append(sala_dic)
-
-    return jsonify(
-        mensagem='Lista de salas',
-        salas=salas_dic
-    )
+    return jsonify(mensagem='Curso não encontrado'), 404
 
 
-@app.route('/sala', methods=['POST'])
-def post_sala():
-    response = is_allowed(['COORDENADOR'])
-    if not response['allowed']:
-        return jsonify(response)
+# -------------- Rotas relacionadas às matrículas --------------
 
-    sala = request.json
-    nova_sala = Sala(
-        nome=sala.get('nome'),
-    )
-
-    db.session.add(nova_sala)
-    db.session.commit()
-
-    return jsonify(
-        mensagem='Sala cadastrada com sucesso',
-        sala={
-            'id_sala': nova_sala.id,
-            'nome': nova_sala.nome,
-        }
-    )
-
-
-@app.route('/sala/<int:id_sala>', methods=['PUT'])
-def put_sala(id_sala):
-    response = is_allowed(['COORDENADOR'])
-    if not response['allowed']:
-        return jsonify(response)
-
-    sala = Sala.query.get(id_sala)
-
-    if not sala:
-        return jsonify({'mensagem': 'Sala não encontrada'})
-
-    data = request.json
-    sala.nome = data.get('nome', sala.nome)
-
-    db.session.commit()
-
-    return jsonify(
-        mensagem='Sala atualizada com sucesso',
-        sala={
-            'id_sala': sala.id,
-            'nome': sala.nome,
-        }
-    )
-
-
-@app.route('/sala/<int:id_sala>', methods=['DELETE'])
-def delete_sala(id_sala):
-    response = is_allowed(['COORDENADOR'])
-    if not response['allowed']:
-        return jsonify(response)
-
-    sala = Sala.query.get(id_sala)
-
-    if not sala:
-        return jsonify({'mensagem': 'Sala não encontrada'})
-
-    cursos = Curso.query.filter_by(id_sala=id_sala).all()
-    if cursos:
-        cursos_dict = []
-        for curso in cursos:
-            curso_dict = {
-                'id': curso.id,
-                'nome': curso.nome
-            }
-            cursos_dict.append(curso_dict)
-
-        return jsonify({
-            'mensagem': 'Essa sala está sendo utilizada por algum curso',
-            'cursos': cursos_dict})
-
-    db.session.delete(sala)
-    db.session.commit()
-    return jsonify({'mensagem': 'Sala excluída com sucesso'})
-
-
-# --------------------- Gerenciamento das matrículas ------------------------
+# Rota para listar todas as matrículas
 @app.route("/matricula", methods=['GET'])
-def get_matricula():
-    response = is_allowed(['COORDENADOR'])
+def get_matriculas():
+    response = is_allowed(['ALUNO', 'COORDENADOR'])
     if not response['allowed']:
         return jsonify(response)
 
-    matriculas = Matricula.query.filter_by(id_usuario=response['usuario']['id']).all()
-    matriculas_dic = {}
+    matriculas = Matricula.query.all()
+
+    if not matriculas:
+        return jsonify(mensagem='Não há matrículas cadastradas')
+
+    matriculas_dic = []
     for matricula in matriculas:
-        curso = Curso.query.filter_by(id=matricula.id_curso).first()
-
-        dias_letivos = handle_aulas(curso=curso)
         matricula_dic = {
-            'nome': curso.nome,
-            'id_professor': curso.id_professor,
-            'id_sala': curso.id_sala,
-            'duracao': curso.duracao,
-            'dias_letivos': dias_letivos
+            'id': matricula.id,
+            'id_usuario': matricula.id_usuario,
+            'id_curso': matricula.id_curso
         }
-        matriculas_dic[matricula.id_curso] = matricula_dic
+        matriculas_dic.append(matricula_dic)
 
-    return jsonify({"mensagem": 'Lista de matrículas',
-                    "matriculas": matriculas_dic})
+    return jsonify(
+        mensagem='Lista de matrículas',
+        matriculas=matriculas_dic
+    )
 
-
-@app.route('/matricula', methods=['POST'])
+# Rota para realizar uma nova matrícula
+@app.route("/matricula", methods=['POST'])
 def post_matricula():
-    response = is_allowed(['COORDENADOR'])
+    response = is_allowed(['ALUNO'])
     if not response['allowed']:
         return jsonify(response)
 
     matricula = request.json
     nova_matricula = Matricula(
-        id_curso=matricula.get('id_curso'),
-        id_usuario=matricula.get('id_usuario')
+        id_usuario=matricula.get('id_usuario'),
+        id_curso=matricula.get('id_curso')
     )
-
-    usuario = Usuario.query.filter_by(
-        id=nova_matricula.id_usuario, cargo=CargoChoices.Aluno).first()
-
-    if not usuario:
-        return jsonify({'mensagem': 'Aluno não existe'})
-
-    matricula_existente = matricula.query.filter_by(
-        id_curso=nova_matricula.id_curso,
-        id_usuario=nova_matricula.id_usuario).first()
-
-    if matricula_existente:
-        return jsonify({'mensagem': 'Aluno já matriculado'})
 
     db.session.add(nova_matricula)
     db.session.commit()
 
-    return jsonify({
-        'mensagem': 'Matrícula cadastrada com sucesso',
-        'matricula': {
-            'id_curso': nova_matricula.id_curso,
+    return jsonify(
+        mensagem='Matrícula realizada com sucesso',
+        matricula={
+            'id': nova_matricula.id,
             'id_usuario': nova_matricula.id_usuario,
+            'id_curso': nova_matricula.id_curso
         }
-    })
+    )
 
+# Rota para listar todas as matrículas de um usuário específico
+@app.route("/matricula/usuario/<int:id_usuario>", methods=['GET'])
+def get_matriculas_usuario(id_usuario):
+    response = is_allowed(['ALUNO', 'COORDENADOR'])
+    if not response['allowed']:
+        return jsonify(response)
 
-@app.route('/matricula/<int:id_curso>', methods=['DELETE'])
-def delete_matricula(id_curso):
+    matriculas = Matricula.query.filter_by(id_usuario=id_usuario).all()
+
+    if not matriculas:
+        return jsonify(mensagem='Não há matrículas para este usuário')
+
+    matriculas_dic = []
+    for matricula in matriculas:
+        matricula_dic = {
+            'id': matricula.id,
+            'id_usuario': matricula.id_usuario,
+            'id_curso': matricula.id_curso
+        }
+        matriculas_dic.append(matricula_dic)
+
+    return jsonify(
+        mensagem=f'Lista de matrículas do usuário {id_usuario}',
+        matriculas=matriculas_dic
+    )
+
+# Rota para listar informações de um curso matriculado por um usuário específico
+@app.route("/matricula/matricula/<int:id_curso>", methods=['GET'])
+def get_matricula_curso(id_curso):
+    response = is_allowed(['ALUNO', 'COORDENADOR'])
+    if not response['allowed']:
+        return jsonify(response)
+
+    matricula = Matricula.query.filter_by(id_curso=id_curso).first()
+
+    if not matricula:
+        return jsonify(mensagem='Este curso não possui matrícula')
+
+    matricula_info = {
+        'id': matricula.id,
+        'id_usuario': matricula.id_usuario,
+        'id_curso': matricula.id_curso
+    }
+
+    return jsonify(
+        mensagem='Informações da matrícula',
+        matricula=matricula_info
+    )
+
+# Rota para deletar uma matrícula específica
+@app.route("/matricula/matricula/<int:id_curso>", methods=['DELETE'])
+def delete_matricula_curso(id_curso):
+    response = is_allowed(['ALUNO'])
+    if not response['allowed']:
+        return jsonify(response)
+
+    matricula = Matricula.query.filter_by(id_curso=id_curso).first()
+
+    if not matricula:
+        return jsonify(mensagem='Matrícula não encontrada')
+
+    db.session.delete(matricula)
+    db.session.commit()
+
+    return jsonify(mensagem='Matrícula deletada com sucesso')
+
+# -------------- Rotas relacionadas às reposições --------------
+
+# Rota para listar todas as reposições
+@app.route("/reposicao", methods=['GET'])
+def get_reposicoes():
     response = is_allowed(['COORDENADOR'])
     if not response['allowed']:
         return jsonify(response)
 
-    matricula = Matricula.query.filter_by(
-        id_usuario=response['usuario']['id'],
-        id_curso=id_curso).first()
+    reposicoes = Reposicao.query.all()
 
-    if matricula:
-        db.session.delete(matricula)
-        db.session.commit()
-        return jsonify({'mensagem': 'Matrícula excluída com sucesso'})
+    if not reposicoes:
+        return jsonify(mensagem='Não há reposições cadastradas')
 
-    else:
-        return jsonify({'mensagem': 'Matrícula não encontrada'})
+    reposicoes_dic = []
+    for reposicao in reposicoes:
+        reposicao_dic = {
+            'id': reposicao.id,
+            'data': reposicao.data(),
+            'id_curso': reposicao.id_curso
+        }
+        reposicoes_dic.append(reposicao_dic)
+
+    return jsonify(
+        mensagem='Lista de reposições',
+        reposicoes=reposicoes_dic
+    )
+
+# Rota para criar uma nova reposição
+@app.route("/reposicao", methods=['POST'])
+def post_reposicao():
+    response = is_allowed(['COORDENADOR'])
+    if not response['allowed']:
+        return jsonify(response)
+
+    reposicao = request.json
+    nova_reposicao = Reposicao(
+        data=reposicao.get('data'),
+        id_curso=reposicao.get('id_curso')
+    )
+
+    db.session.add(nova_reposicao)
+    db.session.commit()
+
+    return jsonify(
+        mensagem='Reposição criada com sucesso',
+        reposicao={
+            'id': nova_reposicao.id,
+            'data': nova_reposicao.data(),
+            'id_curso': nova_reposicao.id_curso
+        }
+    )
+
+# Rota para obter informações de uma reposição específica
+@app.route("/reposicao/<int:id_reposicao>", methods=['GET'])
+def get_reposicao(id_reposicao):
+    response = is_allowed(['COORDENADOR'])
+    if not response['allowed']:
+        return jsonify(response)
+
+    reposicao = Reposicao.query.get(id_reposicao)
+
+    if not reposicao:
+        return jsonify(mensagem='Reposição não encontrada')
+
+    reposicao_info = {
+        'id': reposicao.id,
+        'data': reposicao.data(),
+        'id_curso': reposicao.id_curso
+    }
+
+    return jsonify(
+        mensagem='Informações da reposição',
+        reposicao=reposicao_info
+    )
+
+# Rota para atualizar informações de uma reposição específica
+@app.route("/reposicao/<int:id_reposicao>", methods=['PUT'])
+def put_reposicao(id_reposicao):
+    response = is_allowed(['COORDENADOR'])
+    if not response['allowed']:
+        return jsonify(response)
+
+    reposicao = Reposicao.query.get(id_reposicao)
+
+    if not reposicao:
+        return jsonify(mensagem='Reposição não encontrada'), 404
+
+    data = request.json
+    reposicao.data = data.get('data', reposicao.data)
+    reposicao.id_curso = data.get('id_curso', reposicao.id_curso)
+
+    db.session.commit()
+
+    return jsonify(
+        mensagem='Reposição atualizada com sucesso',
+        reposicao={
+            'id': reposicao.id,
+            'data': reposicao.data(),
+            'id_curso': reposicao.id_curso
+        }
+    )
+
+# Rota para deletar uma reposição específica
+@app.route("/reposicao/<int:id_reposicao>", methods=['DELETE'])
+def delete_reposicao(id_reposicao):
+    response = is_allowed(['COORDENADOR'])
+    if not response['allowed']:
+        return jsonify(response)
+
+    reposicao = Reposicao.query.get(id_reposicao)
+
+    if not reposicao:
+        return jsonify(mensagem='Reposição não encontrada')
+
+    db.session.delete(reposicao)
+    db.session.commit()
+
+    return jsonify(mensagem='Reposição deletada com sucesso')
+
+
+# -------------- Rotas relacionadas aos dias não letivos --------------
+
+# Rota para listar todos os dias não letivos
+@app.route("/naoletivo", methods=['GET'])
+def get_nao_letivos():
+    response = is_allowed(['COORDENADOR'])
+    if not response['allowed']:
+        return jsonify(response)
+
+    nao_letivos = NaoLetivo.query.all()
+
+    if not nao_letivos:
+        return jsonify(mensagem='Não há dias não letivos cadastrados')
+
+    nao_letivos_dic = []
+    for nao_letivo in nao_letivos:
+        nao_letivo_dic = {
+            'id': nao_letivo.id,
+            'data': nao_letivo.data(),
+            'nome': nao_letivo.nome
+        }
+        nao_letivos_dic.append(nao_letivo_dic)
+
+    return jsonify(
+        mensagem='Lista de dias não letivos',
+        nao_letivos=nao_letivos_dic
+    )
+
+# Rota para criar um novo dia não letivo
+@app.route("/naoletivo", methods=['POST'])
+def post_nao_letivo():
+    response = is_allowed(['COORDENADOR'])
+    if not response['allowed']:
+        return jsonify(response)
+
+    nao_letivo = request.json
+    novo_nao_letivo = NaoLetivo(
+        data=nao_letivo.get('data'),
+        nome=nao_letivo.get('nome')
+    )
+
+    db.session.add(novo_nao_letivo)
+    db.session.commit()
+
+    return jsonify(
+        mensagem='Dia não letivo cadastrado com sucesso',
+        nao_letivo={
+            'id': novo_nao_letivo.id,
+            'data': novo_nao_letivo.data(),
+            'nome': novo_nao_letivo.nome
+        }
+    )
+
+# Rota para obter informações de um dia não letivo específico
+@app.route("/naoletivo/<int:id_nao_letivo>", methods=['GET'])
+def get_nao_letivo(id_nao_letivo):
+    response = is_allowed(['COORDENADOR'])
+    if not response['allowed']:
+        return jsonify(response)
+
+    nao_letivo = NaoLetivo.query.get(id_nao_letivo)
+
+    if not nao_letivo:
+        return jsonify(mensagem='Dia não letivo não encontrado')
+
+    nao_letivo_info = {
+        'id': nao_letivo.id,
+        'data': nao_letivo.data(),
+        'nome': nao_letivo.nome
+    }
+
+    return jsonify(
+        mensagem='Informações do dia não letivo',
+        nao_letivo=nao_letivo_info
+    )
+
+# Rota para atualizar informações de um dia não letivo específico
+@app.route("/naoletivo/<int:id_nao_letivo>", methods=['PUT'])
+def put_nao_letivo(id_nao_letivo):
+    response = is_allowed(['COORDENADOR'])
+    if not response['allowed']:
+        return jsonify(response)
+
+    nao_letivo = NaoLetivo.query.get(id_nao_letivo)
+
+    if not nao_letivo:
+        return jsonify(mensagem='Dia não letivo não encontrado'), 404
+
+    data = request.json
+    nao_letivo.data = data.get('data', nao_letivo.data)
+    nao_letivo.nome = data.get('nome', nao_letivo.nome)
+
+    db.session.commit()
+
+    return jsonify(
+        mensagem='Dia não letivo atualizado com sucesso',
+        nao_letivo={
+            'id': nao_letivo.id,
+            'data': nao_letivo.data(),
+            'nome': nao_letivo.nome
+        }
+    )
+
+# Rota para deletar um dia não letivo específico
+@app.route("/naoletivo/<int:id_nao_letivo>", methods=['DELETE'])
+def delete_nao_letivo(id_nao_letivo):
+    response = is_allowed(['COORDENADOR'])
+    if not response['allowed']:
+        return jsonify(response)
+
+    nao_letivo = NaoLetivo.query.get(id_nao_letivo)
+
+    if not nao_letivo:
+        return jsonify(mensagem='Dia não letivo não encontrado')
+
+    db.session.delete(nao_letivo)
+    db.session.commit()
+
+    return jsonify(mensagem='Dia não letivo deletado com sucesso')
+
+
+# -------------- Rotas relacionadas aos feriados -----------------------
+
+# Rota para listar todos os feriados
+@app.route("/feriado", methods=['GET'])
+def get_feriados():
+    feriados = Feriado.query.all()
+    return jsonify(feriados=[])
+
+
+# Rota para criar um novo feriado
+@app.route("/feriado", methods=['POST'])
+def create_feriado():
+    data = request.json
+    novo_feriado = Feriado(data=data['data'], nome=data['nome'])
+    db.session.add(novo_feriado)
+    db.session.commit()
+    return jsonify(message="Feriado criado com sucesso", feriado=novo_feriado)
+
+
+# Rota para obter detalhes de um feriado específico
+@app.route("/feriado/<int:id>", methods=['GET'])
+def get_feriado(id):
+    feriado = Feriado.query.get(id)
+    if not feriado:
+        return jsonify(message="Feriado não encontrado"), 404
+    return jsonify(feriado=feriado)
+
+
+# Rota para atualizar os detalhes de um feriado
+@app.route("/feriado/<int:id>", methods=['PUT'])
+def update_feriado(id):
+    feriado = Feriado.query.get(id)
+    if not feriado:
+        return jsonify(message="Feriado não encontrado"), 404
+
+    data = request.json
+    feriado.data = data['data']
+    feriado.nome = data['nome']
+    db.session.commit()
+
+    return jsonify(message="Feriado atualizado com sucesso", feriado=feriado)
+
+
+# Rota para excluir um feriado
+@app.route("/feriado/<int:id>", methods=['DELETE'])
+def delete_feriado(id):
+    feriado = Feriado.query.get(id)
+    if not feriado:
+        return jsonify(message="Feriado não encontrado"), 404
+
+    db.session.delete(feriado)
+    db.session.commit()
+
+    return jsonify(message="Feriado excluído com sucesso")
+
