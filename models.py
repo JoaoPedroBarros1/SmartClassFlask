@@ -1,5 +1,5 @@
 import enum
-from main import db
+from app import db
 
 
 class CargoChoices(enum.Enum):
@@ -8,64 +8,81 @@ class CargoChoices(enum.Enum):
     Aluno = 'ALUNO'
 
 
-class Usuario(db.Model):
-    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    email = db.Column(db.String(100))
-    senha = db.Column(db.String(100))
-    nome = db.Column(db.String(100))
-    cargo = db.Column(db.Enum(CargoChoices))
-    aluno = db.relationship('Aluno', backref='usuario', uselist=False)
-    professor = db.relationship('Professor', backref='usuario', uselist=False)
-    coordenador = db.relationship('Coordenador', backref='usuario', uselist=False)
+class Matricula(db.Model):
+    id_usuario = db.Column(db.Integer, db.ForeignKey('usuario.id'), primary_key=True)
+    id_curso = db.Column(db.Integer, db.ForeignKey('curso.id'), primary_key=True)
 
 
 class Sala(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    nome = db.Column(db.String(100))
+    nome = db.Column(db.String(100), nullable=False)
+
+    cursos = db.relationship('Curso', backref='sala', lazy=True)
+
+
+class Usuario(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    email = db.Column(db.String(100), nullable=False, unique=True)
+    senha = db.Column(db.String(100), nullable=False)
+    nome = db.Column(db.String(100), nullable=False)
+    cargo = db.Column(db.Enum(CargoChoices), nullable=False)
+
+    aluno = db.relationship('Aluno', back_populates='usuario', uselist=False, cascade="all, delete-orphan")
+    professor = db.relationship('Professor', back_populates='usuario', uselist=False, cascade="all, delete-orphan")
+    coordenador = db.relationship('Coordenador', back_populates='usuario', uselist=False, cascade="all, delete-orphan")
+
+
+class Aluno(db.Model):
+    id = db.Column(db.Integer, db.ForeignKey('usuario.id'), primary_key=True)
+
+    usuario = db.relationship('Usuario', back_populates='aluno')
+    cursos = db.relationship('Curso', secondary=Matricula, back_populates='alunos')
+
+
+class Professor(db.Model):
+    id = db.Column(db.Integer, db.ForeignKey('usuario.id'), primary_key=True)
+    carga_horaria = db.Column(db.Time, nullable=False)
+    start_turno = db.Column(db.Time, nullable=False)
+    end_turno = db.Column(db.Time, nullable=False)
+    dias_da_semana = db.Column(db.Integer, nullable=False)
+
+    usuario = db.relationship('Usuario', back_populates='professor')
+    cursos = db.relationship('Curso', backref='professor', lazy=True)
+
+
+class Coordenador(db.Model):
+    id = db.Column(db.Integer, db.ForeignKey('usuario.id'), primary_key=True)
+
+    usuario = db.relationship('Usuario', back_populates='coordenador')
 
 
 class Curso(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    nome = db.Column(db.String(100))
-    carga_horaria = db.Column(db.Time)
-    duracao = db.Column(db.Time)
-    dias_da_semana = db.Column(db.Integer)
-    data_de_inicio = db.Column(db.DateTime)
-    id_professor = db.Column(db.Integer, db.ForeignKey('professor.id'))
-    id_sala = db.Column(db.Integer, db.ForeignKey('sala.id'))
+    nome = db.Column(db.String(100), nullable=False)
+    carga_horaria = db.Column(db.Time, nullable=False)
+    duracao = db.Column(db.Time, nullable=False)
+    dias_da_semana = db.Column(db.Integer, nullable=False)
+    data_de_inicio = db.Column(db.DateTime, nullable=False)
+    id_professor = db.Column(db.Integer, db.ForeignKey('professor.id'), nullable=False)
+    id_sala = db.Column(db.Integer, db.ForeignKey('sala.id'), nullable=False)
 
+    alunos = db.relationship('Aluno', secondary=Matricula, back_populates='cursos')
+    reposicoes = db.relationship('Reposicao', backref='curso', lazy=True)
 
-class Aluno(db.Model):
-    usuario_id = db.Column(db.Integer, db.ForeignKey('usuario.id'))
-
-
-class Professor(db.Model):
-    usuario_id = db.Column(db.Integer, db.ForeignKey('usuario.id'))
-    carga_horaria = db.Column(db.Time)
-    start_turno = db.Column(db.Time)
-    end_turno = db.Column(db.Time)
-    dias_da_semana = db.Column(int)
-
-
-class Coordenador(db.Model):
-    usuario_id = db.Column(db.Integer, db.ForeignKey('usuario.id'))
-
-
-class Matricula(db.Model):
-    id_usuario = db.Column(db.Integer, primary_key=True)
-    id_curso = db.Column(db.Integer, primary_key=True)
 
 class NaoLetivo(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     data = db.Column(db.Date, nullable=False)
-    nome = db.Column(db.String(255), nullable=False)
+    nome = db.Column(db.String(100), nullable=False)
+
+
+class Feriado(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    data = db.Column(db.Date, nullable=False)
+    nome = db.Column(db.String(100), nullable=False)
+
 
 class Reposicao(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     data = db.Column(db.Date, nullable=False)
     id_curso = db.Column(db.Integer, db.ForeignKey('curso.id'), nullable=False)
-
-class Feriado(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    data = db.Column(db.Date, nullable=False)
-    nome = db.Column(db.String(255), nullable=False)

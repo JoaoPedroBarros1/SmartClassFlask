@@ -7,8 +7,11 @@ app.config.from_pyfile('config.py')
 db = SQLAlchemy(app)
 
 
-from view import *
-from models import Usuario, Sala, Curso, Matricula
+import view
+import models
+
+with app.app_context():
+    db.create_all()
 
 
 if __name__ == '__main__':

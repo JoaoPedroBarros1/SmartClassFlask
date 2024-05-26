@@ -1,5 +1,5 @@
 from flask import jsonify, request
-from main import app, db
+from app import app, db
 from models import (CargoChoices, Sala, Usuario,
                     Curso, Matricula, Aluno,
                     Professor, Coordenador, 
@@ -601,12 +601,12 @@ def get_usuario(id_usuario):
 
 
 @app.route('/usuario/<int:id_usuario>', methods=['PUT'])
-def get_usuario(id_usuario):
+def put_usuario(id_usuario):
     return jsonify(mensagem='Usuário modificado com sucesso'), 200
 
 
 @app.route('/usuario/<int:id_usuario>', methods=['DELETE'])
-def get_usuario(id_usuario):
+def delete_usuario(id_usuario):
     return jsonify(mensagem='Usuário deletado com sucesso'), 200
 
 
@@ -685,7 +685,7 @@ def post_curso():
     )
 
 
-@app.route('curso', methods=['PUT'])
+@app.route('/curso', methods=['PUT'])
 def update_curso():
     return jsonify({'mensagem': 'Curso atualizado com sucesso'})
 
