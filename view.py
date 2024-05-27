@@ -23,17 +23,12 @@ def login():
 
     token = generate_token(usuario.id)
 
-    user = {
-        'email': usuario.email,
-        'senha': usuario.senha,
-        'nome': usuario.nome,
-        'cargo': usuario.cargo.name
-    }
+    user = return_usuario(usuario, True)
     response_dict = {
         'token': token,
         'usuario': user
     }
-
+    print(response_dict)
     return jsonify({'mensagem': 'Login com sucesso', 'response': response_dict}), 200
 
 
@@ -333,7 +328,7 @@ def get_feriados():
         
     return jsonify(mensagem="Todos os feriados fixos cadastrados", response=feriados_list)
 
-5
+
 @app.route("/feriado", methods=['POST'])
 def create_feriado():
     data = request.json
@@ -576,6 +571,10 @@ def post_usuario():
         cargo=usuario.get('cargo').upper()
     )
 
+    user = Usuario.query.filter_by(email=novo_usuario.email).first()
+    if user:
+        return jsonify(mensagem="Email já cadastrado"), 400
+
     user_response = {}
 
     match novo_usuario.cargo:
@@ -585,6 +584,7 @@ def post_usuario():
                 end_turno=usuario.get('end_turno'),
                 dias_da_semana=usuario.get('dias_da_semana')
             )
+
             novo_usuario.professor = novo_professor
             db.session.add(novo_professor)
 
@@ -631,7 +631,20 @@ def get_usuario(id_usuario):
     if not response['allowed']:
         return jsonify(response), 403
 
-    usuario = Usuario.query.get_or_404(id_usuario)
+    usuario = Usuario.query.filter_by(id=id_usuario).first()
+    if not usuario:
+        return jsonify(
+            mensagem='Usuário não encontrado',
+        ), 404
+
+    usuario_dict = return_usuario(usuario, True)
+
+    return jsonify(
+        mensagem='Usuário retornado com sucesso',
+        response=usuario_dict
+    ), 200
+
+    usuario = Usuario.query.filter_by(id=id_usuario).first()
     usuario_info = {
         'id': usuario.id,
         'email': usuario.email,
@@ -697,16 +710,7 @@ def get_cursos():
     cursos = Curso.query.all()
     cursos_dic = []
     for curso in cursos:
-        curso_dic = {
-            'id': curso.id,
-            'nome': curso.nome,
-            'dias_da_semana': curso.dias_da_semana,
-            'id_professor': curso.id_professor,
-            'id_sala': curso.id_sala,
-            'carga_horaria': curso.carga_horaria.isoformat(),
-            'duracao': curso.duracao.isoformat(),
-            'data_de_inicio': curso.data_de_inicio.isoformat(),
-        }
+        curso_dic = return_curso(curso, True)
         cursos_dic.append(curso_dic)
 
     return jsonify(
@@ -747,16 +751,7 @@ def post_curso():
 
     return jsonify(
         mensagem='Curso Cadastrado com Sucesso',
-        response={
-            'id': novo_curso.id,
-            'nome': novo_curso.nome,
-            'carga_horaria': novo_curso.carga_horaria.isoformat(),
-            'duracao': novo_curso.duracao.isoformat(),
-            'dias_da_semana': novo_curso.dias_da_semana,
-            'data_de_inicio': novo_curso.data_de_inicio.isoformat(),
-            'id_professor': novo_curso.id_professor,
-            'id_sala': novo_curso.id_sala
-        }
+        response=return_curso(curso, True)
     )
 
 
