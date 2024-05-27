@@ -1,9 +1,7 @@
 from flask import jsonify, request
+from return_dicts import *
+from models import *
 from app import app, db
-from models import (CargoChoices, Sala, Usuario,
-                    Curso, Matricula, Aluno,
-                    Professor, Coordenador, 
-                    Reposicao, NaoLetivo, Feriado)
 from authentication import generate_token, is_allowed
 
 
@@ -11,10 +9,6 @@ from authentication import generate_token, is_allowed
 
 @app.route('/auth/login', methods=['POST'])
 def login():
-    response = is_allowed(['ALUNO', 'PROFESSOR', 'COORDENADOR'])
-    if response['allowed']:
-        return jsonify({'mensagem': 'Usuário já está logado com uma conta'})
-
     data = request.json
     email = data.get('email')
     senha = data.get('senha')
@@ -22,10 +16,10 @@ def login():
     usuario = Usuario.query.filter_by(email=email).first()
 
     if not usuario:
-        return jsonify({'mensagem': 'Email inválido'}), 401
+        return jsonify({'mensagem': 'Email inválido'}), 404
 
     if usuario.senha != senha:
-        return jsonify({'mensagem': 'Senha inválida'}), 401
+        return jsonify({'mensagem': 'Senha inválida'}), 400
 
     token = generate_token(usuario.id)
 
@@ -47,7 +41,7 @@ def login():
 def get_me():
     response = is_allowed(['ALUNO', 'PROFESSOR', 'COORDENADOR'])
     if not response['allowed']:
-        return jsonify(response)
+        return jsonify(response), 403
 
     return jsonify(
         mensagem='Informações do seu usuário',
@@ -59,7 +53,7 @@ def get_me():
 def get_self_cursos():
     response = is_allowed(['ALUNO', 'PROFESSOR'])
     if not response['allowed']:
-        return jsonify(response)
+        return jsonify(response), 403
 
     id_cursos = Matricula.query.filter_by(id_usuario=response['usuario']['id']).all()
     cursos = []
@@ -89,7 +83,7 @@ def get_self_cursos():
 def get_reposicoes():
     response = is_allowed(['COORDENADOR'])
     if not response['allowed']:
-        return jsonify(response)
+        return jsonify(response), 403
 
     reposicoes = Reposicao.query.all()
 
@@ -115,7 +109,7 @@ def get_reposicoes():
 def post_reposicao():
     response = is_allowed(['COORDENADOR'])
     if not response['allowed']:
-        return jsonify(response)
+        return jsonify(response), 403
 
     reposicao = request.json
     nova_reposicao = Reposicao(
@@ -140,7 +134,7 @@ def post_reposicao():
 def get_reposicao(id_reposicao):
     response = is_allowed(['COORDENADOR'])
     if not response['allowed']:
-        return jsonify(response)
+        return jsonify(response), 403
 
     reposicao = Reposicao.query.get(id_reposicao)
 
@@ -163,7 +157,7 @@ def get_reposicao(id_reposicao):
 def put_reposicao(id_reposicao):
     response = is_allowed(['COORDENADOR'])
     if not response['allowed']:
-        return jsonify(response)
+        return jsonify(response), 403
 
     reposicao = Reposicao.query.get(id_reposicao)
 
@@ -190,7 +184,7 @@ def put_reposicao(id_reposicao):
 def delete_reposicao(id_reposicao):
     response = is_allowed(['COORDENADOR'])
     if not response['allowed']:
-        return jsonify(response)
+        return jsonify(response), 403
 
     reposicao = Reposicao.query.get(id_reposicao)
 
@@ -210,7 +204,7 @@ def delete_reposicao(id_reposicao):
 def get_nao_letivos():
     response = is_allowed(['COORDENADOR'])
     if not response['allowed']:
-        return jsonify(response)
+        return jsonify(response), 403
 
     nao_letivos = NaoLetivo.query.all()
 
@@ -236,7 +230,7 @@ def get_nao_letivos():
 def post_nao_letivo():
     response = is_allowed(['COORDENADOR'])
     if not response['allowed']:
-        return jsonify(response)
+        return jsonify(response), 403
 
     nao_letivo = request.json
     novo_nao_letivo = NaoLetivo(
@@ -261,7 +255,7 @@ def post_nao_letivo():
 def get_nao_letivo(id_nao_letivo):
     response = is_allowed(['COORDENADOR'])
     if not response['allowed']:
-        return jsonify(response)
+        return jsonify(response), 403
 
     nao_letivo = NaoLetivo.query.get(id_nao_letivo)
 
@@ -284,7 +278,7 @@ def get_nao_letivo(id_nao_letivo):
 def put_nao_letivo(id_nao_letivo):
     response = is_allowed(['COORDENADOR'])
     if not response['allowed']:
-        return jsonify(response)
+        return jsonify(response), 403
 
     nao_letivo = NaoLetivo.query.get(id_nao_letivo)
 
@@ -311,7 +305,7 @@ def put_nao_letivo(id_nao_letivo):
 def delete_nao_letivo(id_nao_letivo):
     response = is_allowed(['COORDENADOR'])
     if not response['allowed']:
-        return jsonify(response)
+        return jsonify(response), 403
 
     nao_letivo = NaoLetivo.query.get(id_nao_letivo)
 
@@ -392,7 +386,7 @@ def delete_feriado(id_feriado):
 def get_alunos():
     response = is_allowed(['COORDENADOR'])
     if not response['allowed']:
-        return jsonify(response)
+        return jsonify(response), 403
 
     alunos = Aluno.query.all()
 
@@ -401,9 +395,19 @@ def get_alunos():
 
     alunos_dic = []
     for aluno in alunos:
+        cursos_list = []
+        print(aluno)
+        for curso in aluno.cursos:
+            curso_dict = {
+
+            }
+            cursos_list.append(curso_dict)
+
         aluno_dic = {
-            'id': aluno.id,
-            'id_usuario': aluno.id_usuario,
+            'id': aluno.usuario.id,
+            'nome': aluno.usuario.id,
+            'senha': aluno.usuario.id,
+            'cursos': cursos_list
         }
         alunos_dic.append(aluno_dic)
 
@@ -417,7 +421,7 @@ def get_alunos():
 def get_aluno(id_aluno):
     response = is_allowed(['COORDENADOR'])
     if not response['allowed']:
-        return jsonify(response)
+        return jsonify(response), 403
 
     aluno = Aluno.query.get(id_aluno)
 
@@ -439,7 +443,7 @@ def get_aluno(id_aluno):
 def get_professores():
     response = is_allowed(['COORDENADOR'])
     if not response['allowed']:
-        return jsonify(response)
+        return jsonify(response), 403
 
     professores = Professor.query.all()
 
@@ -467,7 +471,7 @@ def get_professores():
 def get_professor(id_professor):
     response = is_allowed(['COORDENADOR'])
     if not response['allowed']:
-        return jsonify(response)
+        return jsonify(response), 403
 
     professor = Professor.query.get(id_professor)
 
@@ -492,7 +496,7 @@ def get_professor(id_professor):
 def get_coordenadores():
     response = is_allowed(['COORDENADOR'])
     if not response['allowed']:
-        return jsonify(response)
+        return jsonify(response), 403
 
     coordenadores = Coordenador.query.all()
 
@@ -517,7 +521,7 @@ def get_coordenadores():
 def get_coordenador(id_coordenador):
     response = is_allowed(['COORDENADOR'])
     if not response['allowed']:
-        return jsonify(response)
+        return jsonify(response), 403
 
     coordenador = Coordenador.query.get(id_coordenador)
 
@@ -539,7 +543,7 @@ def get_coordenador(id_coordenador):
 def get_usuarios():
     response = is_allowed(['COORDENADOR'])
     if not response['allowed']:
-        return jsonify(response)
+        return jsonify(response), 403
 
     usuarios = Usuario.query.all()
     usuarios_dic = []
@@ -563,36 +567,64 @@ def get_usuarios():
 def post_usuario():
     response = is_allowed(['COORDENADOR'])
     if not response['allowed']:
-        return jsonify(response)
+        return jsonify(response), 403
 
     usuario = request.json
-    cargo_name = usuario.get('cargo').upper()
 
     novo_usuario = Usuario(
         email=usuario.get('email'),
         senha=usuario.get('senha'),
         nome=usuario.get('nome'),
-        cargo=cargo_name
+        cargo=usuario.get('cargo').upper()
     )
 
-    for cargo in CargoChoices:
-        if novo_usuario.cargo == cargo.value:
-            break
-    else:
-        return jsonify(mensagem='Cargo Não Reconhecido'), 401
+    user_response = {}
+
+    match novo_usuario.cargo:
+        case CargoChoices.Professor.value:
+            novo_professor = Professor(
+                start_turno=usuario.get('start_turno'),
+                end_turno=usuario.get('end_turno'),
+                dias_da_semana=usuario.get('dias_da_semana')
+            )
+            novo_usuario.professor = novo_professor
+            db.session.add(novo_professor)
+
+            user_response = {
+                "start_turno": novo_professor.start_turno,
+                "end_turno": novo_professor.end_turno,
+                "dias_da_semana": novo_professor.dias_da_semana
+            }
+
+        case CargoChoices.Coordenador.value:
+            novo_coordenador = Coordenador()
+            novo_usuario.coordenador = novo_coordenador
+            db.session.add(novo_coordenador)
+
+        case CargoChoices.Aluno.value:
+            novo_aluno = Aluno()
+            novo_usuario.aluno = novo_aluno
+            db.session.add(novo_aluno)
+
+        case _:
+            return jsonify(mensagem='Cargo Não Reconhecido'), 400
 
     db.session.add(novo_usuario)
     db.session.commit()
 
-    return jsonify(
-        mensagem='Usuario Cadastrado com Sucesso',
-        response={
+    user_response.update(
+        {
             'email': novo_usuario.email,
             'senha': novo_usuario.senha,
             'nome': novo_usuario.nome,
             'cargo': novo_usuario.cargo.name
         }
     )
+
+    return jsonify(
+        mensagem=f'{novo_usuario.cargo.name} Cadastrado com Sucesso',
+        response=user_response
+    ), 201
 
 
 @app.route('/usuario/<int:id_usuario>', methods=['GET'])
@@ -617,7 +649,7 @@ def delete_usuario(id_usuario):
 def get_cursos():
     response = is_allowed(['COORDENADOR'])
     if not response['allowed']:
-        return jsonify(response)
+        return jsonify(response), 403
 
     cursos = Curso.query.all()
     cursos_dic = []
@@ -644,7 +676,7 @@ def get_cursos():
 def post_curso():
     response = is_allowed(['COORDENADOR'])
     if not response['allowed']:
-        return jsonify(response)
+        return jsonify(response), 403
 
     curso = request.json
     novo_curso = Curso(
@@ -694,7 +726,7 @@ def update_curso():
 def put_curso(id_curso):
     response = is_allowed(['COORDENADOR'])
     if not response['allowed']:
-        return jsonify(response)
+        return jsonify(response), 403
 
     curso = Curso.query.get(id_curso)
 
@@ -730,7 +762,7 @@ def put_curso(id_curso):
 def delete_curso(id_curso):
     response = is_allowed(['COORDENADOR'])
     if not response['allowed']:
-        return jsonify(response)
+        return jsonify(response), 403
 
     curso = Curso.query.get(id_curso)
 
@@ -778,7 +810,7 @@ def delete_sala():
 def get_matriculas():
     response = is_allowed(['ALUNO', 'COORDENADOR'])
     if not response['allowed']:
-        return jsonify(response)
+        return jsonify(response), 403
 
     matriculas = Matricula.query.all()
 
@@ -804,7 +836,7 @@ def get_matriculas():
 def post_matricula():
     response = is_allowed(['ALUNO'])
     if not response['allowed']:
-        return jsonify(response)
+        return jsonify(response), 403
 
     matricula = request.json
     nova_matricula = Matricula(
@@ -829,7 +861,7 @@ def post_matricula():
 def get_matriculas_usuario(id_usuario):
     response = is_allowed(['ALUNO', 'COORDENADOR'])
     if not response['allowed']:
-        return jsonify(response)
+        return jsonify(response), 403
 
     matriculas = Matricula.query.filter_by(id_usuario=id_usuario).all()
 
@@ -855,7 +887,7 @@ def get_matriculas_usuario(id_usuario):
 def get_matricula_curso(id_curso):
     response = is_allowed(['ALUNO', 'COORDENADOR'])
     if not response['allowed']:
-        return jsonify(response)
+        return jsonify(response), 403
 
     matricula = Matricula.query.filter_by(id_curso=id_curso).first()
 
@@ -878,7 +910,7 @@ def get_matricula_curso(id_curso):
 def delete_matricula_curso(id_curso):
     response = is_allowed(['ALUNO'])
     if not response['allowed']:
-        return jsonify(response)
+        return jsonify(response), 403
 
     matricula = Matricula.query.filter_by(id_curso=id_curso).first()
 
