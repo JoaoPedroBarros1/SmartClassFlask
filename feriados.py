@@ -1,15 +1,6 @@
-import enum
 import requests
 from datetime import datetime
 
-class WeekDays(enum.IntEnum):
-    SEGUNDA = 1
-    TERCA = 2
-    QUARTA = 4
-    QUINTA = 8
-    SEXTA = 16
-    SABADO = 32
-    DOMINGO = 64
 
 def handle_aulas(curso):
     response = requests.get('http://date.nager.at/api/v3/PublicHolidays/{}/BR'.format(curso.data_de_inicio.year))
