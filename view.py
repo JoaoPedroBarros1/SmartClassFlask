@@ -194,7 +194,6 @@ def delete_reposicao(id_reposicao):
 
 # -------------- DIAS NÃO LETIVOS --------------
 
-
 @app.route("/naoletivo", methods=['GET'])
 def get_nao_letivos():
     response = is_allowed(['COORDENADOR'])
@@ -314,7 +313,6 @@ def delete_nao_letivo(id_nao_letivo):
 
 
 # -------------- FERIADOS -----------------------
-
 
 @app.route("/feriado", methods=['GET'])
 def get_feriados():
@@ -562,7 +560,7 @@ def get_usuarios():
 def post_usuario():
     response = is_allowed(['COORDENADOR'])
     if not response['allowed']:
-        return jsonify(response), 403
+       return jsonify(response), 403
 
     usuario = request.json
 
@@ -646,12 +644,42 @@ def get_usuario(id_usuario):
         response=usuario_dict
     ), 200
 
+    usuario = Usuario.query.filter_by(id=id_usuario).first()
+    usuario_info = {
+        'id': usuario.id,
+        'email': usuario.email,
+        'senha': usuario.senha,
+        'nome': usuario.nome,
+        'cargo': usuario.cargo.name
+    }
+    if usuario.cargo == CargoChoices.Professor.value:
+        usuario_info['start_turno'] = usuario.professor.start_turno
+        usuario_info['end_turno'] = usuario.professor.end_turno
+        usuario_info['dias_da_semana'] = usuario.professor.dias_da_semana
+    return jsonify(
+        mensagem='Informações do usuário',
+        response=usuario_info
+    )
 
 @app.route('/usuario/<int:id_usuario>', methods=['PUT'])
 def put_usuario(id_usuario):
     response = is_allowed(['COORDENADOR'])
     if not response['allowed']:
         return jsonify(response), 403
+
+    usuario = Usuario.query.get_or_404(id_usuario)
+    data = request.json
+
+    usuario.email = data.get('email', usuario.email)
+    usuario.senha = data.get('senha', usuario.senha)
+    usuario.nome = data.get('nome', usuario.nome)
+
+    if usuario.cargo == CargoChoices.Professor.value:
+        usuario.professor.start_turno = data.get('start_turno', usuario.professor.start_turno)
+        usuario.professor.end_turno = data.get('end_turno', usuario.professor.end_turno)
+        usuario.professor.dias_da_semana = data.get('dias_da_semana', usuario.professor.dias_da_semana)
+
+    db.session.commit()
 
     return jsonify(mensagem='Usuário modificado com sucesso'), 200
 
@@ -661,6 +689,11 @@ def delete_usuario(id_usuario):
     response = is_allowed(['COORDENADOR'])
     if not response['allowed']:
         return jsonify(response), 403
+
+    usuario = Usuario.query.get_or_404(id_usuario)
+
+    db.session.delete(usuario)
+    db.session.commit()
 
     return jsonify(mensagem='Usuário deletado com sucesso'), 200
 
@@ -785,28 +818,38 @@ def delete_curso(id_curso):
 
 @app.route('/sala', methods=['GET'])
 def get_salas():
-    return jsonify({'mensagem': 'Sala'})
+    salas = Sala.query.all()
+    return jsonify([{'id': sala.id, 'nome': sala.nome} for sala in salas])
 
 
 @app.route('/sala', methods=['POST'])
 def post_sala():
-    return jsonify({'mensagem': 'Sala'})
+    data = request.json
+    nova_sala = Sala(nome=data['nome'])
+    db.session.add(nova_sala)
+    db.session.commit()
+    return jsonify({'mensagem': 'Sala criada com sucesso!'})
+
+@app.route('/sala/<int:id_sala>', methods=['GET'])
+def get_sala(id_sala):
+    sala = Sala.query.get_or_404(id_sala)
+    return jsonify({'id': sala.id, 'nome': sala.nome})
 
 
-@app.route('/sala/id_sala', methods=['GET'])
-def get_sala():
-    return jsonify({'mensagem': 'Sala'})
+@app.route('/sala/<int:id_sala>', methods=['PUT'])
+def put_sala(id_sala):
+    sala = Sala.query.get_or_404(id_sala)
+    data = request.json
+    sala.nome = data['nome']
+    db.session.commit()
+    return jsonify({'mensagem': 'Sala atualizada com sucesso!'})
 
-
-@app.route('/sala/id_sala', methods=['PUT'])
-def put_sala():
-    return jsonify({'mensagem': 'Sala'})
-
-
-@app.route('/sala/id_sala', methods=['DELETE'])
-def delete_sala():
-    return jsonify({'mensagem': 'Sala'})
-
+@app.route('/sala/<int:id_sala>', methods=['DELETE'])
+def delete_sala(id_sala):
+    sala = Sala.query.get_or_404(id_sala)
+    db.session.delete(sala)
+    db.session.commit()
+    return jsonify({'mensagem': 'Sala deletada com sucesso!'})
 
 # -------------- MATRICULAS --------------
 
