@@ -23,17 +23,12 @@ def login():
 
     token = generate_token(usuario.id)
 
-    user = {
-        'email': usuario.email,
-        'senha': usuario.senha,
-        'nome': usuario.nome,
-        'cargo': usuario.cargo.name
-    }
+    user = return_usuario(usuario, True)
     response_dict = {
         'token': token,
         'usuario': user
     }
-
+    print(response_dict)
     return jsonify({'mensagem': 'Login com sucesso', 'response': response_dict}), 200
 
 
@@ -199,7 +194,6 @@ def delete_reposicao(id_reposicao):
 
 # -------------- DIAS NÃO LETIVOS --------------
 
-
 @app.route("/naoletivo", methods=['GET'])
 def get_nao_letivos():
     response = is_allowed(['COORDENADOR'])
@@ -319,7 +313,6 @@ def delete_nao_letivo(id_nao_letivo):
 
 
 # -------------- FERIADOS -----------------------
-
 
 @app.route("/feriado", methods=['GET'])
 def get_feriados():
@@ -567,7 +560,7 @@ def get_usuarios():
 def post_usuario():
     response = is_allowed(['COORDENADOR'])
     if not response['allowed']:
-        return jsonify(response), 403
+       return jsonify(response), 403
 
     usuario = request.json
 
@@ -577,6 +570,10 @@ def post_usuario():
         nome=usuario.get('nome'),
         cargo=usuario.get('cargo').upper()
     )
+
+    user = Usuario.query.filter_by(email=novo_usuario.email).first()
+    if user:
+        return jsonify(mensagem="Email já cadastrado"), 400
 
     user_response = {}
 
@@ -629,16 +626,74 @@ def post_usuario():
 
 @app.route('/usuario/<int:id_usuario>', methods=['GET'])
 def get_usuario(id_usuario):
-    return jsonify(mensagem='Usuário retornado com sucesso'), 200
+    response = is_allowed(['COORDENADOR'])
+    if not response['allowed']:
+        return jsonify(response), 403
 
+    usuario = Usuario.query.filter_by(id=id_usuario).first()
+    if not usuario:
+        return jsonify(
+            mensagem='Usuário não encontrado',
+        ), 404
+
+    usuario_dict = return_usuario(usuario, True)
+
+    return jsonify(
+        mensagem='Usuário retornado com sucesso',
+        response=usuario_dict
+    ), 200
+
+    usuario = Usuario.query.filter_by(id=id_usuario).first()
+    usuario_info = {
+        'id': usuario.id,
+        'email': usuario.email,
+        'senha': usuario.senha,
+        'nome': usuario.nome,
+        'cargo': usuario.cargo.name
+    }
+    if usuario.cargo == CargoChoices.Professor.value:
+        usuario_info['start_turno'] = usuario.professor.start_turno
+        usuario_info['end_turno'] = usuario.professor.end_turno
+        usuario_info['dias_da_semana'] = usuario.professor.dias_da_semana
+    return jsonify(
+        mensagem='Informações do usuário',
+        response=usuario_info
+    )
 
 @app.route('/usuario/<int:id_usuario>', methods=['PUT'])
 def put_usuario(id_usuario):
+    response = is_allowed(['COORDENADOR'])
+    if not response['allowed']:
+        return jsonify(response), 403
+
+    usuario = Usuario.query.get_or_404(id_usuario)
+    data = request.json
+
+    usuario.email = data.get('email', usuario.email)
+    usuario.senha = data.get('senha', usuario.senha)
+    usuario.nome = data.get('nome', usuario.nome)
+
+    if usuario.cargo == CargoChoices.Professor.value:
+        usuario.professor.start_turno = data.get('start_turno', usuario.professor.start_turno)
+        usuario.professor.end_turno = data.get('end_turno', usuario.professor.end_turno)
+        usuario.professor.dias_da_semana = data.get('dias_da_semana', usuario.professor.dias_da_semana)
+
+    db.session.commit()
+
     return jsonify(mensagem='Usuário modificado com sucesso'), 200
 
 
 @app.route('/usuario/<int:id_usuario>', methods=['DELETE'])
 def delete_usuario(id_usuario):
+    response = is_allowed(['COORDENADOR'])
+    if not response['allowed']:
+        return jsonify(response), 403
+
+    usuario = Usuario.query.get_or_404(id_usuario)
+
+    db.session.delete(usuario)
+    db.session.commit()
+
     return jsonify(mensagem='Usuário deletado com sucesso'), 200
 
 
@@ -654,16 +709,7 @@ def get_cursos():
     cursos = Curso.query.all()
     cursos_dic = []
     for curso in cursos:
-        curso_dic = {
-            'id': curso.id,
-            'nome': curso.nome,
-            'dias_da_semana': curso.dias_da_semana,
-            'id_professor': curso.id_professor,
-            'id_sala': curso.id_sala,
-            'carga_horaria': curso.carga_horaria.isoformat(),
-            'duracao': curso.duracao.isoformat(),
-            'data_de_inicio': curso.data_de_inicio.isoformat(),
-        }
+        curso_dic = return_curso(curso, True)
         cursos_dic.append(curso_dic)
 
     return jsonify(
@@ -704,16 +750,7 @@ def post_curso():
 
     return jsonify(
         mensagem='Curso Cadastrado com Sucesso',
-        response={
-            'id': novo_curso.id,
-            'nome': novo_curso.nome,
-            'carga_horaria': novo_curso.carga_horaria.isoformat(),
-            'duracao': novo_curso.duracao.isoformat(),
-            'dias_da_semana': novo_curso.dias_da_semana,
-            'data_de_inicio': novo_curso.data_de_inicio.isoformat(),
-            'id_professor': novo_curso.id_professor,
-            'id_sala': novo_curso.id_sala
-        }
+        response=return_curso(curso, True)
     )
 
 
@@ -780,27 +817,81 @@ def delete_curso(id_curso):
 
 @app.route('/sala', methods=['GET'])
 def get_salas():
-    return jsonify({'mensagem': 'Sala'})
+    response = is_allowed(['COORDENADOR'])
+    if not response['allowed']:
+        return jsonify(response), 403
+
+    salas = Sala.query.all()
+    salas_list = []
+    for sala in salas:
+        cursos_list = []
+        for curso in sala.cursos:
+            curso_dict = return_curso(curso, True)
+            cursos_list.append(curso_dict)
+
+        sala_dict = return_sala(sala, True)
+        salas_list.append(sala_dict)
+
+    return jsonify({'mensagem': 'Todas as salas cadastradas', 'response': salas_list}), 200
 
 
 @app.route('/sala', methods=['POST'])
 def post_sala():
-    return jsonify({'mensagem': 'Sala'})
+    response = is_allowed(['COORDENADOR'])
+    if not response['allowed']:
+        return jsonify(response), 403
+
+    sala = request.json
+    nova_sala = Sala(nome=sala.get('nome'))
+    db.session.add(nova_sala)
+    db.session.commit()
+    return jsonify({'mensagem': 'Sala criada com sucesso!', 'response': return_sala(nova_sala, True)}), 201
 
 
-@app.route('/sala/id_sala', methods=['GET'])
-def get_sala():
-    return jsonify({'mensagem': 'Sala'})
+@app.route('/sala/<int:id_sala>', methods=['GET'])
+def get_sala(id_sala):
+    response = is_allowed(['COORDENADOR'])
+    if not response['allowed']:
+        return jsonify(response), 403
+
+    sala = Sala.query.filter_by(id=id_sala).first()
+    if not sala:
+        return jsonify({'mensagem': 'Sala não encontrada'}), 404
+
+    sala_dict = return_sala(sala, True)
+    return jsonify({'mensagem': 'Sala encontrada', 'response': sala_dict}), 200
 
 
-@app.route('/sala/id_sala', methods=['PUT'])
-def put_sala():
-    return jsonify({'mensagem': 'Sala'})
+@app.route('/sala/<int:id_sala>', methods=['PUT'])
+def put_sala(id_sala):
+    response = is_allowed(['COORDENADOR'])
+    if not response['allowed']:
+        return jsonify(response), 403
+
+    sala = Sala.query.filter_by(id=id_sala).first()
+    if not sala:
+        return jsonify({'mensagem': 'Sala não encontrada'}), 404
+
+    data = request.json
+    sala.nome = data.get('nome')
+    db.session.commit()
+    sala_dict = return_sala(sala, True)
+    return jsonify({'mensagem': 'Sala atualizada com sucesso!', 'response': sala_dict})
 
 
-@app.route('/sala/id_sala', methods=['DELETE'])
-def delete_sala():
-    return jsonify({'mensagem': 'Sala'})
+@app.route('/sala/<int:id_sala>', methods=['DELETE'])
+def delete_sala(id_sala):
+    response = is_allowed(['COORDENADOR'])
+    if not response['allowed']:
+        return jsonify(response), 403
+
+    sala = Sala.query.filter_by(id=id_sala).first()
+    if not sala:
+        return jsonify({'mensagem': 'Sala não encontrada'}), 404
+
+    db.session.delete(sala)
+    db.session.commit()
+    return jsonify({'mensagem': 'Sala deletada com sucesso!'}), 200
 
 
 # -------------- MATRICULAS --------------

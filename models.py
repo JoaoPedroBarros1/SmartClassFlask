@@ -19,7 +19,7 @@ class Sala(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     nome = db.Column(db.String(100), nullable=False)
 
-    cursos = db.relationship('Curso', backref='sala', lazy=True)
+    cursos = db.relationship('Curso', back_populates='sala', lazy=True)
 
 
 class Usuario(db.Model):
@@ -48,7 +48,7 @@ class Professor(db.Model):
     dias_da_semana = db.Column(db.Integer, nullable=False)
 
     usuario = db.relationship('Usuario', back_populates='professor')
-    cursos = db.relationship('Curso', backref='professor', lazy=True)
+    cursos = db.relationship('Curso', back_populates='professor', lazy=True)
 
 
 class Coordenador(db.Model):
@@ -67,8 +67,10 @@ class Curso(db.Model):
     id_professor = db.Column(db.Integer, db.ForeignKey('professor.id'), nullable=False)
     id_sala = db.Column(db.Integer, db.ForeignKey('sala.id'), nullable=False)
 
+    sala = db.relationship('Sala', back_populates='cursos', lazy=True)
+    professor = db.relationship('Professor', back_populates='cursos', lazy=True)
     alunos = db.relationship('Aluno', secondary=Matricula, back_populates='cursos')
-    reposicoes = db.relationship('Reposicao', backref='curso', lazy=True)
+    reposicoes = db.relationship('Reposicao', back_populates='curso', lazy=True)
 
 
 class NaoLetivo(db.Model):
@@ -76,14 +78,20 @@ class NaoLetivo(db.Model):
     data = db.Column(db.Date, nullable=False)
     nome = db.Column(db.String(100), nullable=False)
 
+    emenda = db.Column(db.Boolean, nullable=False)
+
 
 class Feriado(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     data = db.Column(db.Date, nullable=False)
     nome = db.Column(db.String(100), nullable=False)
 
+    emenda = db.Column(db.Boolean, nullable=False)
+
 
 class Reposicao(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     data = db.Column(db.Date, nullable=False)
     id_curso = db.Column(db.Integer, db.ForeignKey('curso.id'), nullable=False)
+
+    curso = db.relationship('Curso', back_populates='reposicoes')

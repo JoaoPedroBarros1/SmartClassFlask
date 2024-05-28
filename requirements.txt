@@ -4,3 +4,4 @@ mysqlclient
 flask-bcrypt
 pyjwt
 requests
+flask-cors
