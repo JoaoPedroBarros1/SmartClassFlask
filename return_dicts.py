@@ -16,14 +16,6 @@ def return_weekdays(dias_da_semana: int) -> dict:
     weekdays_names = []
     weekdays_bool = []
 
-    if dias_da_semana >= WeekDays.DOMINGO:
-        dias_da_semana -= WeekDays.DOMINGO
-        weekdays_list.append("Domingo")
-        weekdays_names.append("Sun")
-        weekdays_bool.append(True)
-    else:
-        weekdays_bool.append(False)
-
     if dias_da_semana >= WeekDays.SABADO:
         dias_da_semana -= WeekDays.SABADO
         weekdays_list.append("Sábado")
@@ -72,8 +64,21 @@ def return_weekdays(dias_da_semana: int) -> dict:
     else:
         weekdays_bool.append(False)
 
+    if dias_da_semana >= WeekDays.DOMINGO:
+        dias_da_semana -= WeekDays.DOMINGO
+        weekdays_list.append("Domingo")
+        weekdays_names.append("Sun")
+        weekdays_bool.append(True)
+    else:
+        weekdays_bool.append(False)
+
+    weekdays_list.reverse()
+    weekdays_names.reverse()
+    weekdays_bool.reverse()
+
     weekdays_dict = {
         'list': weekdays_list,
+        'names': weekdays_names,
         'bool': weekdays_bool
     }
 
@@ -115,7 +120,7 @@ def return_usuario(usuario: Usuario, public: bool) -> dict:
 def return_aluno(aluno: Aluno, public: bool) -> dict:
     aluno_dict = {
         'nome': aluno.usuario.nome,
-        'cargo': aluno.usuario.cargo
+        'cargo': aluno.usuario.cargo.name
     }
 
     cursos_list = []
@@ -137,9 +142,9 @@ def return_aluno(aluno: Aluno, public: bool) -> dict:
 def return_professor(professor: Professor, public: bool) -> dict:
     professor_dict = {
         'nome': professor.usuario.nome,
-        'cargo': professor.usuario.cargo,
-        'start_turno': professor.start_turno,
-        'end_turno': professor.end_turno,
+        'cargo': professor.usuario.cargo.name,
+        'start_turno': professor.start_turno.isoformat(),
+        'end_turno': professor.end_turno.isoformat(),
         'dias_da_semana': return_weekdays(professor.dias_da_semana)
     }
 
@@ -161,7 +166,7 @@ def return_professor(professor: Professor, public: bool) -> dict:
 def return_coordenador(coordenador: Coordenador, public: bool) -> dict:
     coordenador_dict = {
         'nome': coordenador.usuario.nome,
-        'cargo': coordenador.usuario.cargo
+        'cargo': coordenador.usuario.cargo.name
     }
 
     if public:
@@ -199,6 +204,8 @@ def return_curso(curso: Curso, public: bool) -> dict:
     )
     inicio_curso = datetime.time()
     dias_da_semana = return_weekdays(curso.dias_da_semana)
+    aulas = []
+    all_feriados = []
 
     curso_dict.update({
         'reposicoes': reposicoes_list,

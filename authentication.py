@@ -1,7 +1,8 @@
 import jwt
 from config import SECRET_KEY
 from flask import request
-from models import Usuario
+from models import Usuario, CargoChoices
+from return_dicts import return_aluno, return_professor, return_coordenador
 
 
 def remove_bearer(token):
@@ -55,11 +56,16 @@ def is_allowed(allowed_list: list) -> dict:
     if user_cargo_value not in allowed_list:
         return {'allowed': False, 'mensagem': 'Usuário não possui cargo necessário'}
 
-    usuario = {
-        'id': user.id,
-        'email': user.email,
-        'senha': user.senha,
-        'nome': user.nome,
-        'cargo': user.cargo.name
-    }
-    return {'allowed': True, 'mensagem': response['mensagem'], 'usuario': usuario}
+    usuario_dict = {}
+
+    match user_cargo_value:
+        case CargoChoices.Professor.value:
+            usuario_dict.update(return_professor(user.professor, True))
+
+        case CargoChoices.Coordenador.value:
+            usuario_dict.update(return_coordenador(user.coordenador, True))
+
+        case CargoChoices.Aluno.value:
+            usuario_dict.update(return_aluno(user.aluno, True))
+
+    return {'allowed': True, 'mensagem': response['mensagem'], 'response': usuario_dict}
