@@ -633,8 +633,6 @@ def put_usuario(id_usuario):
     if user and user != usuario:
         return jsonify(mensagem="Email já cadastrado"), 400
 
-    user_response = {}
-
     match novo_usuario['cargo']:
         case CargoChoices.Professor.name:
             novo_professor = {
@@ -668,7 +666,19 @@ def delete_usuario(id_usuario):
     if not response['allowed']:
         return jsonify(response), 403
 
-    usuario = Usuario.query.get_or_404(id_usuario)
+    usuario = Usuario.query.filter_by(id=id_usuario).first()
+    if not usuario:
+        return jsonify(
+            mensagem='Usuário não encontrado',
+        ), 404
+
+    match usuario.cargo:
+        case CargoChoices.Professor:
+            if usuario.professor.cursos:
+                cursos_list = []
+                for curso in usuario.professor.cursos:
+                    cursos_list.append(return_curso(curso, True))
+                return jsonify(mensagem='Professor está cadastrado em um curso', response=cursos_list), 400
 
     db.session.delete(usuario)
     db.session.commit()
