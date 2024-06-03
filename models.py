@@ -61,9 +61,10 @@ class Curso(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     nome = db.Column(db.String(100), nullable=False)
     carga_horaria = db.Column(db.Time, nullable=False)
-    duracao = db.Column(db.Time, nullable=False)
+    start_curso = db.Column(db.Time, nullable=False)
+    end_curso = db.Column(db.Time, nullable=False)
     dias_da_semana = db.Column(db.Integer, nullable=False)
-    data_de_inicio = db.Column(db.DateTime, nullable=False)
+    data_de_inicio = db.Column(db.Date, nullable=False)
     id_professor = db.Column(db.Integer, db.ForeignKey('professor.id'), nullable=False)
     id_sala = db.Column(db.Integer, db.ForeignKey('sala.id'), nullable=False)
 
