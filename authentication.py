@@ -57,15 +57,17 @@ def is_allowed(allowed_list: list) -> dict:
         return {'allowed': False, 'mensagem': 'Usuário não possui cargo necessário'}
 
     usuario_dict = {}
+    access = False
 
     match user_cargo_value:
         case CargoChoices.Professor.value:
-            usuario_dict.update(return_professor(user.professor, True))
+            usuario_dict.update(return_professor(user.professor, False, True))
 
         case CargoChoices.Coordenador.value:
             usuario_dict.update(return_coordenador(user.coordenador, True))
+            access = True
 
         case CargoChoices.Aluno.value:
-            usuario_dict.update(return_aluno(user.aluno, True))
+            usuario_dict.update(return_aluno(user.aluno, False, True))
 
-    return {'allowed': True, 'mensagem': response['mensagem'], 'response': usuario_dict}
+    return {'allowed': True, 'mensagem': response['mensagem'], 'response': usuario_dict, 'admin': access}

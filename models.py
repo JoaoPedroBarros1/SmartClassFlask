@@ -19,7 +19,7 @@ class Sala(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     nome = db.Column(db.String(100), nullable=False)
 
-    cursos = db.relationship('Curso', back_populates='sala', lazy=True)
+    cursos = db.relationship('Curso', back_populates='sala', uselist=True)
 
 
 class Usuario(db.Model):
@@ -48,7 +48,7 @@ class Professor(db.Model):
     dias_da_semana = db.Column(db.Integer, nullable=False)
 
     usuario = db.relationship('Usuario', back_populates='professor')
-    cursos = db.relationship('Curso', back_populates='professor', lazy=True)
+    cursos = db.relationship('Curso', back_populates='professor')
 
 
 class Coordenador(db.Model):
@@ -67,18 +67,18 @@ class Curso(db.Model):
     id_professor = db.Column(db.Integer, db.ForeignKey('professor.id'), nullable=False)
     id_sala = db.Column(db.Integer, db.ForeignKey('sala.id'), nullable=False)
 
-    sala = db.relationship('Sala', back_populates='cursos', lazy=True)
-    professor = db.relationship('Professor', back_populates='cursos', lazy=True)
+    sala = db.relationship('Sala', back_populates='cursos')
+    professor = db.relationship('Professor', back_populates='cursos')
     alunos = db.relationship('Aluno', secondary=Matricula, back_populates='cursos')
-    reposicoes = db.relationship('Reposicao', back_populates='curso', lazy=True)
+    reposicoes = db.relationship('Reposicao', back_populates='curso')
 
 
-class NaoLetivo(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
+class Emenda(db.Model):
+    id = db.Column(db.Integer, db.ForeignKey('feriado.id'), primary_key=True)
+    emenda = db.Column(db.Boolean, nullable=False, default=True)
     data = db.Column(db.Date, nullable=False)
-    nome = db.Column(db.String(100), nullable=False)
 
-    emenda = db.Column(db.Boolean, nullable=False)
+    feriado = db.relationship('Feriado', back_populates='emenda')
 
 
 class Feriado(db.Model):
@@ -86,12 +86,15 @@ class Feriado(db.Model):
     data = db.Column(db.Date, nullable=False)
     nome = db.Column(db.String(100), nullable=False)
 
-    emenda = db.Column(db.Boolean, nullable=False)
+    emenda = db.relationship('Emenda', back_populates='feriado', uselist=False, cascade="all, delete-orphan")
+    reposicoes = db.relationship('Reposicao', back_populates='feriado', uselist=True, cascade="all, delete-orphan")
 
 
 class Reposicao(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     data = db.Column(db.Date, nullable=False)
     id_curso = db.Column(db.Integer, db.ForeignKey('curso.id'), nullable=False)
+    id_feriado = db.Column(db.Integer, db.ForeignKey('feriado.id'), nullable=False)
 
     curso = db.relationship('Curso', back_populates='reposicoes')
+    feriado = db.relationship('Feriado', back_populates='reposicoes')
