@@ -1,29 +1,24 @@
 import jwt
+from functools import wraps
 from config import SECRET_KEY
-from flask import request
+from flask import request, jsonify, g
 from models import Usuario, CargoChoices
 from return_dicts import return_aluno, return_professor, return_coordenador
 
 
-def remove_bearer(token):
+def _remove_bearer(token):
     if token.startswith('Bearer '):
         return token[len('Bearer '):]
     else:
         return token
 
 
-def generate_token(user_id):
-    payload = {'id_usuario': user_id}
-    token = jwt.encode(payload, SECRET_KEY, algorithm='HS256')
-    return token
-
-
-def get_user_login() -> dict:
+def _get_user_login() -> dict:
     token = request.headers.get('Authorization')
     if not token:
         return {'sucesso': False, 'mensagem': 'Token de autenticação necessário'}
 
-    token = remove_bearer(token)
+    token = _remove_bearer(token)
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
         id_usuario = payload['id_usuario']
@@ -44,30 +39,41 @@ def get_user_login() -> dict:
         return {'sucesso': False, 'mensagem': 'Token inválido'}
 
 
-def is_allowed(allowed_list: list) -> dict:
-    response = get_user_login()
-    if not response['sucesso']:
-        return {'allowed': False, 'mensagem': response['mensagem']}
+def login_required(func):
+    @wraps(func)
+    def login_wrap(*args, **kwargs):
+        response = _get_user_login()
+        if not response['sucesso']:
+            return jsonify(mensagem=response['mensagem']), 401
 
-    user = response['user']
+        user = response['user']
+        user_cargo_value = user.cargo.value
 
-    user_cargo_value = user.cargo.value
+        usuario_dict = {}
+        access = False
 
-    if user_cargo_value not in allowed_list:
-        return {'allowed': False, 'mensagem': 'Usuário não possui cargo necessário'}
+        match user_cargo_value:
+            case CargoChoices.Professor.value:
+                usuario_dict.update(return_professor(user.professor, False, True))
 
-    usuario_dict = {}
-    access = False
+            case CargoChoices.Coordenador.value:
+                usuario_dict.update(return_coordenador(user.coordenador, True))
+                access = True
 
-    match user_cargo_value:
-        case CargoChoices.Professor.value:
-            usuario_dict.update(return_professor(user.professor, False, True))
+            case CargoChoices.Aluno.value:
+                usuario_dict.update(return_aluno(user.aluno, False, True))
 
-        case CargoChoices.Coordenador.value:
-            usuario_dict.update(return_coordenador(user.coordenador, True))
-            access = True
+        g.mensagem = response['mensagem']
+        g.usuario = usuario_dict
+        g.is_admin = access
+        return func(*args, **kwargs)
+    return login_wrap
 
-        case CargoChoices.Aluno.value:
-            usuario_dict.update(return_aluno(user.aluno, False, True))
 
-    return {'allowed': True, 'mensagem': response['mensagem'], 'response': usuario_dict, 'admin': access}
+def admin_required(func):
+    @wraps(func)
+    def admin_wrap(*args, **kwargs):
+        if not g.is_admin:
+            return jsonify(mensagem="Necessário ter cargo de coordenador"), 403
+        return func(*args, **kwargs)
+    return admin_wrap

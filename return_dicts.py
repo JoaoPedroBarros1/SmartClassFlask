@@ -1,3 +1,4 @@
+import datetime
 from dateutil.parser import parse
 from models import *
 
@@ -137,8 +138,7 @@ def return_aluno(aluno: Aluno, admin: bool, curso_recursive: bool) -> dict:
         aluno_dict.update({
             'id': aluno.id,
             'email': aluno.usuario.email,
-            'senha': aluno.usuario.senha,
-            'cargo': aluno.usuario.cargo.name
+            'senha': aluno.usuario.senha
         })
     return aluno_dict
 
@@ -155,15 +155,13 @@ def return_professor(professor: Professor, admin: bool, curso_recursive: bool) -
         professor_dict.update({
             'cursos': cursos_list
         })
-
     if admin:
         professor_dict.update({
             'id': professor.id,
             'email': professor.usuario.email,
             'senha': professor.usuario.senha,
-            'cargo': professor.usuario.cargo.name,
-            'start_turno': professor.start_turno.isoformat(),
-            'end_turno': professor.end_turno.isoformat(),
+            'start_turno': str(professor.start_turno),
+            'end_turno': str(professor.end_turno),
             'dias_da_semana': return_weekdays(professor.dias_da_semana)
         })
     return professor_dict
@@ -178,8 +176,7 @@ def return_coordenador(coordenador: Coordenador, admin: bool) -> dict:
         coordenador_dict.update({
             'id': coordenador.id,
             'email': coordenador.usuario.email,
-            'senha': coordenador.usuario.senha,
-            'cargo': coordenador.usuario.cargo.name
+            'senha': coordenador.usuario.senha
         })
     return coordenador_dict
 
