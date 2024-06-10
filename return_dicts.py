@@ -1,9 +1,10 @@
-import datetime
 from dateutil.parser import parse
 from models import *
 
 
 def return_weekdays(dias_da_semana: int) -> dict:
+    int_dias_semana = dias_da_semana
+
     class WeekDays(enum.IntEnum):
         SABADO = 64
         SEXTA = 32
@@ -78,6 +79,7 @@ def return_weekdays(dias_da_semana: int) -> dict:
     weekdays_bool.reverse()
 
     weekdays_dict = {
+        'num': int_dias_semana,
         'list': weekdays_list,
         'names': weekdays_names,
         'bool': weekdays_bool
@@ -88,7 +90,8 @@ def return_weekdays(dias_da_semana: int) -> dict:
 
 def return_sala(sala: Sala, admin: bool, curso_recursive: bool) -> dict:
     sala_dict = {
-        'nome': sala.nome
+        'nome': sala.nome,
+        'id': sala.id
     }
 
     if curso_recursive:
@@ -99,22 +102,18 @@ def return_sala(sala: Sala, admin: bool, curso_recursive: bool) -> dict:
             'cursos': curso_list
         })
 
-    if admin:
-        sala_dict.update({
-            'id': sala.id
-        })
     return sala_dict
 
 
 def return_usuario(usuario: Usuario, admin: bool) -> dict:
     usuario_dict = {
+        'id': usuario.id,
         'nome': usuario.nome,
         'cargo': usuario.cargo.name
     }
 
     if admin:
         usuario_dict.update({
-            'id': usuario.id,
             'email': usuario.email,
             'senha': usuario.senha
         })
@@ -123,7 +122,9 @@ def return_usuario(usuario: Usuario, admin: bool) -> dict:
 
 def return_aluno(aluno: Aluno, admin: bool, curso_recursive: bool) -> dict:
     aluno_dict = {
-        'nome': aluno.usuario.nome
+        'id': aluno.id,
+        'nome': aluno.usuario.nome,
+        'cargo': 'ALUNO'
     }
 
     if curso_recursive:
@@ -136,7 +137,6 @@ def return_aluno(aluno: Aluno, admin: bool, curso_recursive: bool) -> dict:
 
     if admin:
         aluno_dict.update({
-            'id': aluno.id,
             'email': aluno.usuario.email,
             'senha': aluno.usuario.senha
         })
@@ -145,7 +145,12 @@ def return_aluno(aluno: Aluno, admin: bool, curso_recursive: bool) -> dict:
 
 def return_professor(professor: Professor, admin: bool, curso_recursive: bool) -> dict:
     professor_dict = {
-        'nome': professor.usuario.nome
+        'id': professor.id,
+        'nome': professor.usuario.nome,
+        'cargo': 'PROFESSOR',
+        'start_turno': str(professor.start_turno),
+        'end_turno': str(professor.end_turno),
+        'dias_da_semana': return_weekdays(professor.dias_da_semana)
     }
 
     if curso_recursive:
@@ -157,24 +162,21 @@ def return_professor(professor: Professor, admin: bool, curso_recursive: bool) -
         })
     if admin:
         professor_dict.update({
-            'id': professor.id,
             'email': professor.usuario.email,
             'senha': professor.usuario.senha,
-            'start_turno': str(professor.start_turno),
-            'end_turno': str(professor.end_turno),
-            'dias_da_semana': return_weekdays(professor.dias_da_semana)
         })
     return professor_dict
 
 
 def return_coordenador(coordenador: Coordenador, admin: bool) -> dict:
     coordenador_dict = {
-        'nome': coordenador.usuario.nome
+        'id': coordenador.id,
+        'nome': coordenador.usuario.nome,
+        'cargo': 'COORDENADOR'
     }
 
     if admin:
         coordenador_dict.update({
-            'id': coordenador.id,
             'email': coordenador.usuario.email,
             'senha': coordenador.usuario.senha
         })
@@ -188,10 +190,13 @@ def return_curso(curso: Curso, admin: bool,
                  prof_recursive: bool
                  ) -> dict:
     curso_dict = {
+        'id': curso.id,
         'nome': curso.nome,
         'data_de_inicio': curso.data_de_inicio.isoformat(),
-        'carga_horaria': curso.carga_horaria.isoformat(),
-        'duracao': curso.end_curso - curso.start_curso,
+        'carga_horaria': curso.carga_horaria,
+        'start_curso': curso.start_curso,
+        'end_curso': curso.end_curso,
+        'dias_da_semana': return_weekdays(curso.dias_da_semana)
     }
 
     if aluno_recursive:
@@ -220,9 +225,17 @@ def return_curso(curso: Curso, admin: bool,
             'professor': return_professor(curso.professor, admin, False)
         })
 
-    dias_da_semana = return_weekdays(curso.dias_da_semana)
     aulas = []
     all_feriados = []
+
+    dias_por_semana = 0
+    print(curso_dict)
+    for _dia in curso_dict['dias_da_semana']['bool']:
+        dias_por_semana += _dia
+
+    total_semanas = 0
+    for semana in range(total_semanas):  # 0, 1, 2, 3...
+        pass
 
     curso_dict.update({
         'aulas': aulas,
@@ -231,15 +244,12 @@ def return_curso(curso: Curso, admin: bool,
         'qtd_reposicoes': len(curso.reposicoes)
     })
 
-    if admin:
-        curso_dict.update({
-            'id': curso.id
-        })
     return curso_dict
 
 
 def return_emenda(emenda: Emenda, admin: bool, feriado_recursive: bool) -> dict:
     emenda_dict = {
+        'id': emenda.id,
         'nome': emenda.feriado.nome,
         'data_emenda': emenda.data.strftime('%Y-%m-%d'),
         'emenda': emenda.emenda
@@ -249,17 +259,13 @@ def return_emenda(emenda: Emenda, admin: bool, feriado_recursive: bool) -> dict:
         emenda_dict.update({
             'data_feriado': emenda.feriado.data.strftime('%Y-%m-%d')
         })
-
-    if admin:
-        emenda_dict.update({
-            'id': emenda.id
-        })
     return emenda_dict
 
 
 def return_feriado(feriado: Feriado, admin: bool) -> dict:
     data = parse(str(feriado.data))
     feriado_dict = {
+        'id': feriado.id,
         'data_feriado': data.strftime('%Y-%m-%d'),
         'nome': feriado.nome
     }
@@ -267,15 +273,13 @@ def return_feriado(feriado: Feriado, admin: bool) -> dict:
     if feriado.emenda:
         feriado_dict.update(return_emenda(feriado.emenda, admin, False))
 
-    if admin:
-        feriado_dict.update({
-            'id': feriado.id
-        })
     return feriado_dict
 
 
 def return_reposicao(reposicao: Reposicao, admin: bool, curso_recursive: bool) -> dict:
     reposicao_dict = {
+        'id': reposicao.id,
+        'id_curso': reposicao.id_curso,
         'data': reposicao.data
     }
 
@@ -284,9 +288,4 @@ def return_reposicao(reposicao: Reposicao, admin: bool, curso_recursive: bool) -
             'curso': return_curso(reposicao.curso, admin, True, False, True, True)
         })
 
-    if admin:
-        reposicao_dict.update({
-            'id': reposicao.id,
-            'id_curso': reposicao.id_curso
-        })
     return reposicao_dict

@@ -8,9 +8,8 @@ def check_integrity(requirements: set):
     def integrity_decorator(func):
         @wraps(func)
         def integrity_wrap(*args, **kwargs):
-            data_request = request.json
-            g.data_request = data_request
-            req_difference = requirements.difference(set(data_request.keys()))
+            g.data_request = request.json
+            req_difference = requirements.difference(set(g.data_request.keys()))
             if req_difference:
                 return jsonify(mensagem="Valores necessários não foram enviados"), 400
 
@@ -19,24 +18,24 @@ def check_integrity(requirements: set):
     return integrity_decorator
 
 
-def check_cargo(prof_req: set):
+def check_cargo_post(prof_req: set):
     def cargo_decorator(func):
         @wraps(func)
         def cargo_wrap(*args, **kwargs):
-            data_request = g.data_request
-            match data_request['cargo'].upper():
+            g.data_request = request.json
+            match g.data_request['cargo'].upper():
                 case CargoChoices.Coordenador.value:
                     pass
 
                 case CargoChoices.Professor.value:
-                    req_difference = prof_req.difference(set(data_request.keys()))
+                    req_difference = prof_req.difference(set(g.data_request.keys()))
                     if req_difference:
                         return jsonify(mensagem="Valores do cargo não foram enviados"), 400
 
-                    if data_request['start_turno'] >= data_request['end_turno']:
+                    if g.data_request['start_turno'] >= g.data_request['end_turno']:
                         return jsonify(mensagem="Horário que curso termina é menor que quando começa"), 400
 
-                    if not 1 <= int(data_request['dias_da_semana']) <= 127:
+                    if not 1 <= int(g.data_request['dias_da_semana']) <= 127:
                         return jsonify(mensagem="Dias de trabalho inválidos, você inseriu um número maior que 127?"), 400
 
                 case CargoChoices.Aluno.value:
@@ -48,6 +47,41 @@ def check_cargo(prof_req: set):
             return func(*args, **kwargs)
         return cargo_wrap
     return cargo_decorator
+
+
+def check_cargo_put(func):
+    @wraps(func)
+    def cargo_wrap(*args, **kwargs):
+        g.data_request = request.json
+        match g.usuario['cargo'].upper():
+            case CargoChoices.Coordenador.value:
+                pass
+
+            case CargoChoices.Professor.value:
+                start_turno = g.usuario.start_turno
+                end_turno = g.usuario.end_turno
+                dias_da_semana = g.usuario.dias_da_semana.num
+                if 'start_turno' in g.data_request:
+                    start_turno = g.data_request['start_turno']
+                if 'end_turno' in g.data_request:
+                    end_turno = g.data_request['end_turno']
+                if 'dias_da_semana' in g.data_request:
+                    dias_da_semana = g.data_request['dias_da_semana']
+
+                if start_turno >= end_turno:
+                    return jsonify(mensagem="Horário que curso termina é menor que quando começa"), 400
+
+                if not 1 <= int(dias_da_semana) <= 127:
+                    return jsonify(mensagem="Dias de trabalho inválidos, você inseriu um número maior que 127?"), 400
+
+            case CargoChoices.Aluno.value:
+                pass
+
+            case _:
+                return jsonify(mensagem="Cargo inválido"), 400
+
+        return func(*args, **kwargs)
+    return cargo_wrap
 
 
 def _check_login(login_request: dict) -> dict:
@@ -97,78 +131,6 @@ def _check_usuario(usuario_request: dict, method: Literal["POST", "PUT"]) -> dic
     _POST_ = {"email", "senha", "nome"}
     _PUT_ = {"", ""}
     _SET_ = set(usuario_request.keys())
-
-    match method:
-        case "POST":
-            post_difference = _POST_.difference(_SET_)
-            if post_difference:
-                return {'allowed': False, 'mensagem': 'Valores não coincidem'}
-
-        case "PUT":
-            put_difference = _PUT_.difference(_SET_)
-            if put_difference:
-                return {'allowed': False, 'mensagem': 'Valores não coincidem'}
-
-    return {'allowed': True}
-
-
-def _check_aluno(aluno_request: dict, method: Literal["POST", "PUT"]) -> dict:
-    for valor in aluno_request.values():
-        if len(valor) == 0:
-            return {'allowed': False, 'mensagem': 'Algum dos valores é nulo'}
-
-    _POST_ = {""}
-    _PUT_ = {""}
-    _SET_ = set(aluno_request.keys())
-
-    match method:
-        case "POST":
-            post_difference = _POST_.difference(_SET_)
-            if post_difference:
-                return {'allowed': False, 'mensagem': 'Valores não coincidem'}
-
-        case "PUT":
-            put_difference = _PUT_.difference(_SET_)
-            if put_difference:
-                return {'allowed': False, 'mensagem': 'Valores não coincidem'}
-
-    return {'allowed': True}
-
-
-def _check_professor(professor_request: dict, method: Literal["POST", "PUT"]) -> dict:
-    # Checar se o valor do dias_da_semana é 1 <= x <= 127
-    # Checar se o start_turno é menor que o end_turno
-
-    for valor in professor_request.values():
-        if len(valor) == 0:
-            return {'allowed': False, 'mensagem': 'Algum dos valores é nulo'}
-
-    _POST_ = {"start_turno", "end_turno", "dias_da_semana"}
-    _PUT_ = {"start_turno", "end_turno", "dias_da_semana"}
-    _SET_ = set(professor_request.keys())
-
-    match method:
-        case "POST":
-            post_difference = _POST_.difference(_SET_)
-            if post_difference:
-                return {'allowed': False, 'mensagem': 'Valores não coincidem'}
-
-        case "PUT":
-            put_difference = _PUT_.difference(_SET_)
-            if put_difference:
-                return {'allowed': False, 'mensagem': 'Valores não coincidem'}
-
-    return {'allowed': True}
-
-
-def _check_coordenador(coordenador_request: dict, method: Literal["POST", "PUT"]) -> dict:
-    for valor in coordenador_request.values():
-        if len(valor) == 0:
-            return {'allowed': False, 'mensagem': 'Algum dos valores é nulo'}
-
-    _POST_ = {"", ""}
-    _PUT_ = {"", ""}
-    _SET_ = set(coordenador_request.keys())
 
     match method:
         case "POST":

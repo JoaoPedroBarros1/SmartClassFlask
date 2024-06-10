@@ -1,5 +1,3 @@
-import jwt
-import requests
 from config import SECRET_KEY
 from flask_bcrypt import generate_password_hash, check_password_hash
 from return_dicts import *
@@ -8,10 +6,13 @@ from models import *
 from app import app, db
 from authentication import login_required, admin_required
 from flask import jsonify, g
+import jwt
+import requests
+import datetime
 
 
 # -------------- DEBUG --------------
-@app.route('/debug/template', methods=['GET'])
+@app.route('/template/coordenador', methods=['POST'])
 def create_template():
     email = 'coordenador@gmail.com'
     senha = '1234'
@@ -66,7 +67,7 @@ def login():
     payload = {'id_usuario': usuario.id}
     token = jwt.encode(payload, SECRET_KEY, algorithm='HS256')
 
-    user = return_usuario(usuario, False)
+    user = return_usuario(usuario, True)
     response_dict = {
         'token': token,
         'usuario': user
@@ -121,8 +122,7 @@ def post_reposicao():
     db.session.commit()
 
     return jsonify(
-        mensagem='Reposição criada com sucesso',
-        response=return_reposicao(nova_reposicao, True, False)
+        mensagem='Reposição criada com sucesso'
     )
 
 
@@ -144,14 +144,16 @@ def get_reposicao(id_reposicao):
 @app.route("/reposicao/<int:id_reposicao>", methods=['PUT'])
 @login_required
 @admin_required
-@check_integrity({'data', 'id_curso'})
 def put_reposicao(id_reposicao):
     reposicao = Reposicao.query.filter_by(id=id_reposicao).first()
     if not reposicao:
         return jsonify(mensagem='Reposição não encontrada'), 404
 
-    reposicao.data = g.data_request['data']
-    reposicao.id_curso = g.data_request['id_curso']
+    if 'data' in g.data_request:
+        reposicao.data = g.data_request['data']
+
+    if 'id_curso' in g.data_request:
+        reposicao.id_curso = g.data_request['id_curso']
 
     db.session.commit()
 
@@ -216,14 +218,15 @@ def get_emenda(id_emenda):
 @app.route("/emenda/<int:id_emenda>", methods=['PUT'])
 @login_required
 @admin_required
-@check_integrity({'emenda'})
 def put_emenda(id_emenda):
     emenda = Emenda.query.filter_by(id=id_emenda).first()
 
     if not emenda:
         return jsonify(mensagem='Emenda não encontrada'), 404
 
-    emenda.emenda = g.data_request['emenda']
+    if 'emenda' in g.data_request:
+        emenda.emenda = g.data_request['emenda']
+
     db.session.commit()
 
     return jsonify(
@@ -306,11 +309,10 @@ def post_feriado():
     novo_feriado = Feriado(
         data=g.data_request['data'],
         nome=g.data_request['nome'])
-    feriado_dict = return_feriado(novo_feriado, True)
 
     db.session.add(novo_feriado)
 
-    data_feriado: str = feriado_dict['data_feriado']
+    data_feriado: str = novo_feriado.data
     data_iso: datetime.date = datetime.date.fromisoformat(data_feriado)
     match data_iso.isoweekday():
         case 2:
@@ -318,61 +320,55 @@ def post_feriado():
             nova_emenda = Emenda(data=day_before)
             novo_feriado.emenda = nova_emenda
             db.session.add(nova_emenda)
-            feriado_dict.update(return_emenda(nova_emenda, True, False))
-            feriado_dict.update({'emenda': 1})
 
         case 4:
             day_after = data_iso + datetime.timedelta(1)
             nova_emenda = Emenda(data=day_after)
             novo_feriado.emenda = nova_emenda
             db.session.add(nova_emenda)
-            feriado_dict.update(return_emenda(nova_emenda, True, False))
-            feriado_dict.update({'emenda': 1})
 
     db.session.commit()
-    return jsonify(mensagem="Feriado criado com sucesso", response=feriado_dict), 201
+    return jsonify(mensagem="Feriado criado com sucesso"), 201
 
 
 @app.route("/feriado/<int:id_feriado>", methods=['PUT'])
 @login_required
 @admin_required
-@check_integrity({'nome', 'data'})
 def put_feriado(id_feriado):
-    feriado = Feriado.query.filter_by(id=id_feriado).first()
+    feriado : Feriado = Feriado.query.filter_by(id=id_feriado).first()
     if not feriado:
         return jsonify(mensagem="Feriado não encontrado"), 404
 
-    feriado.nome = g.data_request['nome']
-    feriado_data = g.data_request['data']
+    feriado_dict = {}
 
-    feriado_dict = return_feriado(feriado, True)
+    if 'nome' in g.data_request:
+        feriado.nome = g.data_request['nome']
 
-    data_feriado: str = feriado_dict['data_feriado']
-    data_iso: datetime.date = datetime.date.fromisoformat(data_feriado)
-    if (data_iso != feriado_data) and (feriado_data != ""):
-        feriado.data = feriado_data
+    if 'data' in g.data_request:
+        feriado_data = g.data_request['data']
+        feriado_datetime: datetime.date = datetime.date.fromisoformat(feriado_data)
+        data_iso = feriado.data.isoformat()
 
-        match data_iso.isoweekday():
-            case 2:
-                day_before = data_iso - datetime.timedelta(1)
-                nova_emenda = Emenda(data=day_before)
-                feriado.emenda = nova_emenda
-                db.session.add(nova_emenda)
-                feriado_dict.update(return_emenda(nova_emenda, True, False))
-                feriado_dict.update({'emenda': 1})
+        if (data_iso != feriado_data) and (feriado_data != ""):
+            feriado.data = feriado_data
 
-            case 4:
-                day_after = data_iso + datetime.timedelta(1)
-                nova_emenda = Emenda(data=day_after)
-                feriado.emenda = nova_emenda
-                db.session.add(nova_emenda)
-                feriado_dict.update(return_emenda(nova_emenda, True, False))
-                feriado_dict.update({'emenda': 1})
+            match feriado_datetime.isoweekday():
+                case 2:
+                    day_before = feriado_datetime - datetime.timedelta(1)
+                    feriado.emenda.data = day_before
+                    feriado_dict.update(return_emenda(feriado.emenda, True, False))
 
-            case _:
-                db.session.delete(feriado.emenda)
+                case 4:
+                    day_after = feriado_datetime + datetime.timedelta(1)
+                    feriado.emenda.data = day_after
+                    feriado_dict.update(return_emenda(feriado.emenda, True, False))
+
+                case _:
+                    db.session.delete(feriado.emenda)
 
     db.session.commit()
+
+    feriado_dict.update(return_feriado(feriado, True))
 
     return jsonify(mensagem="Feriado atualizado com sucesso", response=feriado_dict)
 
@@ -529,7 +525,7 @@ def get_usuarios():
 @login_required
 @admin_required
 @check_integrity({'email', 'senha', 'nome', 'cargo'})
-@check_cargo({'start_turno', 'end_turno', 'dias_da_semana'})
+@check_cargo_post({'start_turno', 'end_turno', 'dias_da_semana'})
 def post_usuario():
     email = g.data_request['email']
     senha = g.data_request['senha']
@@ -549,39 +545,31 @@ def post_usuario():
         cargo=cargo.upper()
     )
 
-    user_response = {}
-
     match novo_usuario.cargo:
         case CargoChoices.Professor.value:
             novo_professor = Professor(
                 start_turno=g.data_request['start_turno'],
                 end_turno=g.data_request['end_turno'],
-                dias_da_semana=g.data_request['dias_da_semana']
+                dias_da_semana=int(g.data_request['dias_da_semana'])
             )
             novo_usuario.professor = novo_professor
             db.session.add(novo_professor)
-            user_response.update(return_professor(novo_professor,
-                                                  True,
-                                                  False))
 
         case CargoChoices.Coordenador.value:
             novo_coordenador = Coordenador()
             novo_usuario.coordenador = novo_coordenador
             db.session.add(novo_coordenador)
-            user_response.update(return_coordenador(novo_coordenador, True))
 
         case CargoChoices.Aluno.value:
             novo_aluno = Aluno()
             novo_usuario.aluno = novo_aluno
             db.session.add(novo_aluno)
-            user_response.update(return_aluno(novo_aluno, True, False))
 
     db.session.add(novo_usuario)
     db.session.commit()
 
     return jsonify(
-        mensagem=f'{novo_usuario.cargo.name} Cadastrado com Sucesso',
-        response=user_response
+        mensagem=f'{novo_usuario.cargo.name} Cadastrado com Sucesso'
     ), 201
 
 
@@ -605,9 +593,7 @@ def get_usuario(id_usuario):
 
 @app.route('/usuario/<int:id_usuario>', methods=['PUT'])
 @login_required
-@admin_required
-@check_integrity({'email', 'nome', 'senha'})
-@check_cargo({'start_turno', 'end_turno', 'dias_da_semana'})
+@check_cargo_put
 def put_usuario(id_usuario):
     usuario = Usuario.query.filter_by(id=id_usuario).first()
     if not usuario:
@@ -615,25 +601,44 @@ def put_usuario(id_usuario):
             mensagem='Usuário não encontrado',
         ), 404
 
-    user = Usuario.query.filter_by(email=g.data_request['email']).first()
-    if user and user != usuario:
-        return jsonify(mensagem="Email já cadastrado"), 400
+    if g.usuario['id'] != id_usuario and g.usuario['cargo'] != CargoChoices.Coordenador.value:
+        return jsonify(mensagem="Usuário não possui permissão para editar"), 403
 
     user_response = {}
 
     match usuario.cargo.value:
         case CargoChoices.Professor.value:
             if usuario.professor.cursos:
-                return jsonify(mensagem='Há cursos que dependem desse professor,'), 400
+                return jsonify(mensagem='Há cursos que dependem desse professor'), 400
+            for curso in usuario.professor.cursos:
+                if curso['start_curso'] < g.data_request['start_turno'] or curso['end_curso'] > g.data_request['end_curso']:
+                    return jsonify(mensagem="Horários de curso conflitantes com horário do professor", curso=curso), 400
 
-            usuario.professor.start_turno = g.data_request['start_turno']
-            usuario.professor.end_turno = g.data_request['end_turno']
-            usuario.professor.dias_da_semana = g.data_request['dias_da_semana']
+
+
+            if 'start_turno' in g.data_request:
+                usuario.professor.start_turno = g.data_request['start_turno']
+
+            if 'end_turno' in g.data_request:
+                usuario.professor.end_turno = g.data_request['end_turno']
+
+            if 'dias_da_semana' in g.data_request:
+                usuario.professor.dias_da_semana = int(g.data_request['dias_da_semana'])
+
             user_response.update(return_professor(usuario.professor, True, True))
 
-    usuario.email = g.data_request['email']
-    usuario.senha = generate_password_hash(g.data_request['senha']).decode('utf-8')
-    usuario.nome = g.data_request['nome']
+    if 'email' in g.data_request:
+        user = Usuario.query.filter_by(email=g.data_request['email']).first()
+        if user and user != usuario:
+            return jsonify(mensagem="Email já cadastrado"), 400
+
+        usuario.email = g.data_request['email']
+
+    if 'senha' in g.data_request:
+        usuario.senha = generate_password_hash(g.data_request['senha']).decode('utf-8')
+
+    if 'nome' in g.data_request:
+        usuario.nome = g.data_request['nome']
 
     db.session.commit()
 
@@ -711,7 +716,7 @@ def post_curso():
         id_sala=g.data_request['id_sala']
     )
 
-    professor = Professor.query.filter_by(id=novo_curso.id_professor).first()
+    professor : Professor = Professor.query.filter_by(id=novo_curso.id_professor).first()
     if not professor:
         return jsonify(mensagem='Professor não existe'), 400
 
@@ -719,16 +724,15 @@ def post_curso():
     if not sala:
         return jsonify(mensagem='Sala não existe'), 400
 
+    print(novo_curso.start_curso, professor.start_turno)
+    if novo_curso.start_curso < professor.start_turno or novo_curso.end_curso > professor.end_turno:
+        return jsonify(mensagem="Horários de curso conflitante com horário do professor"), 400
+
     db.session.add(novo_curso)
     db.session.commit()
 
     return jsonify(
-        mensagem='Curso Cadastrado com Sucesso',
-        response=return_curso(novo_curso, True,
-                              False,
-                              False,
-                              True,
-                              True)
+        mensagem='Curso Cadastrado com Sucesso'
     ), 201
 
 
@@ -752,23 +756,28 @@ def get_curso(id_curso):
 @app.route('/curso/<int:id_curso>', methods=['PUT'])
 @login_required
 @admin_required
-@check_integrity({'nome', 'carga_horaria', 'start_curso',
-                  'end_curso', 'dias_da_semana', 'id_sala',
-                  'data_de_inicio', 'id_professor'})
 def put_curso(id_curso):
     curso = Curso.query.filter_by(id=id_curso).first()
     
     if not curso:
         return jsonify(mensagem='Curso não encontrado'), 404
 
-    curso.nome = g.data_request['nome']
-    curso.carga_horaria = g.data_request['carga_horaria']
-    curso.start_curso = g.data_request['start_curso']
-    curso.end_curso = g.data_request['end_curso']
-    curso.dias_da_semana = g.data_request['dias_da_semana']
-    curso.data_de_inicio = g.data_request['data_de_inicio']
-    curso.id_professor = g.data_request['id_professor']
-    curso.id_sala = g.data_request['id_sala']
+    if 'nome' in g.data_request:
+        curso.nome = g.data_request['nome']
+    if 'carga_horaria' in g.data_request:
+        curso.carga_horaria = g.data_request['carga_horaria']
+    if 'start_curso' in g.data_request:
+        curso.start_curso = g.data_request['start_curso']
+    if 'end_curso' in g.data_request:
+        curso.end_curso = g.data_request['end_curso']
+    if 'dias_da_semana' in g.data_request:
+        curso.dias_da_semana = g.data_request['dias_da_semana']
+    if 'data_de_inicio' in g.data_request:
+        curso.data_de_inicio = g.data_request['data_de_inicio']
+    if 'id_professor' in g.data_request:
+        curso.id_professor = g.data_request['id_professor']
+    if 'id_sala' in g.data_request:
+        curso.id_sala = g.data_request['id_sala']
     
     db.session.commit()
 
@@ -831,8 +840,7 @@ def post_sala():
 
     db.session.add(nova_sala)
     db.session.commit()
-    return jsonify(mensagem='Sala criada com sucesso!',
-                   response=return_sala(nova_sala, True, False)), 201
+    return jsonify(mensagem='Sala criada com sucesso!'), 201
 
 
 @app.route('/sala/<int:id_sala>', methods=['GET'])
@@ -850,17 +858,17 @@ def get_sala(id_sala):
 @app.route('/sala/<int:id_sala>', methods=['PUT'])
 @login_required
 @admin_required
-@check_integrity({'nome'})
 def put_sala(id_sala):
     sala = Sala.query.filter_by(id=id_sala).first()
     if not sala:
         return jsonify(mensagem='Sala não encontrada'), 404
 
-    sala.nome = g.data_request['nome']
+    if 'nome' in g.data_request:
+        sala.nome = g.data_request['nome']
     
     db.session.commit()
     sala_dict = return_sala(sala, True, True)
-    return jsonify(mensagem='Sala atualizada com sucesso!', response=sala_dict), 200
+    return jsonify(mensagem='Sala atualizada com sucesso', response=sala_dict), 200
 
 
 @app.route('/sala/<int:id_sala>', methods=['DELETE'])
@@ -932,8 +940,7 @@ def post_matricula():
     db.session.commit()
 
     return jsonify(
-        mensagem='Matrícula realizada com sucesso',
-        response=return_aluno(local_aluno, True, True)
+        mensagem='Matrícula realizada com sucesso'
     ), 201
 
 

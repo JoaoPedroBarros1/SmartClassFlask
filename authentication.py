@@ -63,6 +63,8 @@ def login_required(func):
             case CargoChoices.Aluno.value:
                 usuario_dict.update(return_aluno(user.aluno, False, True))
 
+        usuario_dict.update({'email': user.email})
+
         g.mensagem = response['mensagem']
         g.usuario = usuario_dict
         g.is_admin = access
@@ -71,6 +73,15 @@ def login_required(func):
 
 
 def admin_required(func):
+    @wraps(func)
+    def admin_wrap(*args, **kwargs):
+        if not g.is_admin:
+            return jsonify(mensagem="Necessário ter cargo de coordenador"), 403
+        return func(*args, **kwargs)
+    return admin_wrap
+
+
+def admin_or_self_required(func):
     @wraps(func)
     def admin_wrap(*args, **kwargs):
         if not g.is_admin:

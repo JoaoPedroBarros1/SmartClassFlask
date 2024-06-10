@@ -60,7 +60,7 @@ class Coordenador(db.Model):
 class Curso(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     nome = db.Column(db.String(100), nullable=False)
-    carga_horaria = db.Column(db.Time, nullable=False)
+    carga_horaria = db.Column(db.Integer, nullable=False)
     start_curso = db.Column(db.Time, nullable=False)
     end_curso = db.Column(db.Time, nullable=False)
     dias_da_semana = db.Column(db.Integer, nullable=False)
