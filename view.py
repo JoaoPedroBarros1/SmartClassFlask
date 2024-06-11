@@ -113,7 +113,7 @@ def get_reposicoes():
 @check_integrity({'data', 'id_curso', 'id_feriado'})
 def post_reposicao():
     nova_reposicao = Reposicao(
-        data =g.data_request['data'],
+        data=g.data_request['data'],
         id_curso=g.data_request['id_curso'],
         id_feriado=g.data_request['id_feriado']
     )
@@ -182,7 +182,6 @@ def delete_reposicao(id_reposicao):
 
 @app.route("/emenda", methods=['GET'])
 @login_required
-@admin_required
 def get_emendas():
     emendas = Emenda.query.all()
 
@@ -191,7 +190,7 @@ def get_emendas():
 
     emendas_dic = []
     for emenda in emendas:
-        nao_letivo_dic = return_emenda(emenda, True, True)
+        nao_letivo_dic = return_emenda(emenda, g.is_admin, True)
         emendas_dic.append(nao_letivo_dic)
 
     return jsonify(
@@ -273,7 +272,6 @@ def registar_every_feriado(year):
 
 @app.route("/feriado", methods=['GET'])
 @login_required
-@admin_required
 def get_feriados():
     feriados = Feriado.query.all()
 
@@ -282,7 +280,7 @@ def get_feriados():
 
     feriados_list = []
     for feriado in feriados:
-        feriado_dict = return_feriado(feriado, True)
+        feriado_dict = return_feriado(feriado, g.is_admin)
         feriados_list.append(feriado_dict)
         
     return jsonify(mensagem="Todos os feriados cadastrados", response=feriados_list), 200
@@ -335,7 +333,7 @@ def post_feriado():
 @login_required
 @admin_required
 def put_feriado(id_feriado):
-    feriado : Feriado = Feriado.query.filter_by(id=id_feriado).first()
+    feriado: Feriado = Feriado.query.filter_by(id=id_feriado).first()
     if not feriado:
         return jsonify(mensagem="Feriado não encontrado"), 404
 
@@ -611,7 +609,8 @@ def put_usuario(id_usuario):
             if usuario.professor.cursos:
                 return jsonify(mensagem='Há cursos que dependem desse professor'), 400
             for curso in usuario.professor.cursos:
-                if curso['start_curso'] < g.data_request['start_turno'] or curso['end_curso'] > g.data_request['end_curso']:
+                if (curso['start_curso'] < g.data_request['start_turno']
+                        or curso['end_curso'] > g.data_request['end_curso']):
                     return jsonify(mensagem="Horários de curso conflitantes com horário do professor", curso=curso), 400
 
 
@@ -716,20 +715,23 @@ def post_curso():
         id_sala=g.data_request['id_sala']
     )
 
-    professor : Professor = Professor.query.filter_by(id=novo_curso.id_professor).first()
+    professor: Professor = Professor.query.filter_by(id=novo_curso.id_professor).first()
     if not professor:
         return jsonify(mensagem='Professor não existe'), 400
 
-    sala = Sala.query.filter_by(id=novo_curso.id_sala).first()
+    sala: Sala = Sala.query.filter_by(id=novo_curso.id_sala).first()
     if not sala:
         return jsonify(mensagem='Sala não existe'), 400
 
-    print(novo_curso.start_curso, professor.start_turno)
-    if novo_curso.start_curso < professor.start_turno or novo_curso.end_curso > professor.end_turno:
-        return jsonify(mensagem="Horários de curso conflitante com horário do professor"), 400
+    current_dias = return_weekdays(novo_curso.dias_da_semana)
+    for curso in sala.cursos:
+        print(curso)
 
-    db.session.add(novo_curso)
-    db.session.commit()
+    if novo_curso.start_curso < professor.start_turno or novo_curso.end_curso > professor.end_turno:
+        return jsonify(mensagem="Horário do curso não está no período de aula do professor"), 400
+
+    # db.session.add(novo_curso)
+    # db.session.commit()
 
     return jsonify(
         mensagem='Curso Cadastrado com Sucesso'
@@ -884,10 +886,10 @@ def delete_sala(id_sala):
         for curso in sala.cursos:
             cursos_list.append(return_curso(curso,
                                             True,
-                                            True,
-                                            True,
                                             False,
-                                            True
+                                            False,
+                                            False,
+                                            False
                                             ))
 
         return jsonify(mensagem='Há cursos que dependem dessa sala', cursos=cursos_list), 400
