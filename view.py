@@ -723,12 +723,20 @@ def post_curso():
     if not sala:
         return jsonify(mensagem='Sala não existe'), 400
 
+    if (datetime.time.fromisoformat(novo_curso.start_curso) < professor.start_turno
+            or datetime.time.fromisoformat(novo_curso.end_curso) > professor.end_turno):
+        return jsonify(mensagem="Horário do curso não está no período de aula do professor"), 400
+
+    _days_difference_set_: set = (set(return_weekdays(novo_curso.dias_da_semana)['list']).difference(
+        set(return_weekdays(professor.dias_da_semana)['list'])))
+    if _days_difference_set_:
+        return jsonify(mensagem=f"Professor não trabalha nos dias: {', '.join(_days_difference_set_)}"), 400
+
+    # Checar se a sala já está ocupada nesse horário
+    # Checar se o professor já está ocupado nesse horário
     current_dias = return_weekdays(novo_curso.dias_da_semana)
     for curso in sala.cursos:
         print(curso)
-
-    if novo_curso.start_curso < professor.start_turno or novo_curso.end_curso > professor.end_turno:
-        return jsonify(mensagem="Horário do curso não está no período de aula do professor"), 400
 
     # db.session.add(novo_curso)
     # db.session.commit()
