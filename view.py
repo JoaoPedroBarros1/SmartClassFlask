@@ -117,7 +117,13 @@ def post_reposicao():
     repo_id_curso = g.data_request['id_curso']
     repo_id_feriado = g.data_request['id_feriado']
 
+    curso: Curso = Curso.query.filter_by(id=repo_id_curso).first()
+    if not curso:
+        return jsonify(mensagem="Curso não existe"), 404
 
+    feriado: Feriado = Feriado.query.filter_by(id=repo_id_feriado).first()
+    if not feriado:
+        return jsonify(mensagem="Feriado não existe"), 404
 
     nova_reposicao = Reposicao(
         data=repo_data,
@@ -151,6 +157,7 @@ def get_reposicao(id_reposicao):
 @app.route("/reposicao/<int:id_reposicao>", methods=['PUT'])
 @login_required
 @admin_required
+@fetch_datarequest
 def put_reposicao(id_reposicao):
     reposicao = Reposicao.query.filter_by(id=id_reposicao).first()
     if not reposicao:
@@ -224,6 +231,7 @@ def get_emenda(id_emenda):
 @app.route("/emenda/<int:id_emenda>", methods=['PUT'])
 @login_required
 @admin_required
+@fetch_datarequest
 def put_emenda(id_emenda):
     emenda = Emenda.query.filter_by(id=id_emenda).first()
 
@@ -339,6 +347,7 @@ def post_feriado():
 @app.route("/feriado/<int:id_feriado>", methods=['PUT'])
 @login_required
 @admin_required
+@fetch_datarequest
 def put_feriado(id_feriado):
     feriado: Feriado = Feriado.query.filter_by(id=id_feriado).first()
     if not feriado:
@@ -599,6 +608,7 @@ def get_usuario(id_usuario):
 @app.route('/usuario/<int:id_usuario>', methods=['PUT'])
 @login_required
 @check_cargo_put
+@fetch_datarequest
 def put_usuario(id_usuario):
     usuario = Usuario.query.filter_by(id=id_usuario).first()
     if not usuario:
@@ -716,15 +726,19 @@ def profs_disp():
         if _days_difference_set_:
             continue
 
+        if (novo_start_curso < prof.start_turno
+                or novo_end_curso > prof.end_turno):
+            continue
+
         for __curso in prof.cursos:
             if _curso_dias_da_semana_.intersection(set(return_weekdays(__curso.dias_da_semana)['list'])):
-                if not (novo_end_curso < __curso.start_curso or novo_start_curso > __curso.end_curso):
+                if not (novo_end_curso <= __curso.start_curso or novo_start_curso >= __curso.end_curso):
                     current_curso_letivos = return_aulas(__curso)
                     if (current_curso_letivos['aulas_set'].intersection(aulas['aulas_set']) or
                             current_curso_letivos['reposicoes_set'].intersection(aulas['aulas_set'])):
-                        continue
-
-        professores_dict.append(return_professor(prof, False, False))
+                        break
+        else:
+            professores_dict.append(return_professor(prof, False, False))
 
     return jsonify(
         mensagem="Professores disponíveis", response=professores_dict
@@ -761,11 +775,11 @@ def salas_disp():
     for sala in salas:
         for __curso in sala.cursos:
             if _curso_dias_da_semana_.intersection(set(return_weekdays(__curso.dias_da_semana)['list'])):
-                if not (novo_end_curso < __curso.start_curso or novo_start_curso > __curso.end_curso):
+                if not (novo_end_curso <= __curso.start_curso or novo_start_curso >= __curso.end_curso):
                     if return_aulas(__curso)['aulas_set'].intersection(aulas['aulas_set']):
-                        continue
-
-        salas_dict.append(return_sala(sala, False, False))
+                        break
+        else:
+            salas_dict.append(return_sala(sala, False, False))
 
     return jsonify(
         mensagem="Salas disponíveos", response=salas_dict
@@ -838,7 +852,7 @@ def post_curso():
 
     for __curso in sala.cursos:
         if _curso_dias_da_semana_.intersection(set(return_weekdays(__curso.dias_da_semana)['list'])):
-            if not (novo_end_curso < __curso.start_curso or novo_start_curso > __curso.end_curso):
+            if not (novo_end_curso <= __curso.start_curso or novo_start_curso >= __curso.end_curso):
                 if return_aulas(__curso)['aulas_set'].intersection(aulas['aulas_set']):
                     return jsonify(
                         mensagem=f"A sala {sala.nome} já está sendo utilizada pelo curso {__curso.nome}"
@@ -846,7 +860,7 @@ def post_curso():
 
     for __curso in professor.cursos:
         if _curso_dias_da_semana_.intersection(set(return_weekdays(__curso.dias_da_semana)['list'])):
-            if not (novo_end_curso < __curso.start_curso or novo_start_curso > __curso.end_curso):
+            if not (novo_end_curso <= __curso.start_curso or novo_start_curso >= __curso.end_curso):
                 current_curso_letivos = return_aulas(__curso)
                 if (current_curso_letivos['aulas_set'].intersection(aulas['aulas_set']) or
                         current_curso_letivos['reposicoes_set'].intersection(aulas['aulas_set'])):
@@ -882,6 +896,7 @@ def get_curso(id_curso):
 @app.route('/curso/<int:id_curso>', methods=['PUT'])
 @login_required
 @admin_required
+@fetch_datarequest
 def put_curso(id_curso):
     curso = Curso.query.filter_by(id=id_curso).first()
     
@@ -940,7 +955,7 @@ def put_curso(id_curso):
 
     for __curso in sala.cursos:
         if _curso_dias_da_semana_.intersection(set(return_weekdays(__curso.dias_da_semana)['list'])):
-            if not (novo_end_curso < __curso.start_curso or novo_start_curso > __curso.end_curso):
+            if not (novo_end_curso <= __curso.start_curso or novo_start_curso >= __curso.end_curso):
                 if return_aulas(__curso)['aulas_set'].intersection(aulas['aulas_set']):
                     return jsonify(
                         mensagem=f"A sala {sala.nome} já está sendo utilizada pelo curso {__curso.nome}"
@@ -948,7 +963,7 @@ def put_curso(id_curso):
 
     for __curso in professor.cursos:
         if _curso_dias_da_semana_.intersection(set(return_weekdays(__curso.dias_da_semana)['list'])):
-            if not (novo_end_curso < __curso.start_curso or novo_start_curso > __curso.end_curso):
+            if not (novo_end_curso <= __curso.start_curso or novo_start_curso >= __curso.end_curso):
                 current_curso_letivos = return_aulas(__curso)
                 if (current_curso_letivos['aulas_set'].intersection(aulas['aulas_set']) or
                         current_curso_letivos['reposicoes_set'].intersection(aulas['aulas_set'])):
@@ -1023,6 +1038,7 @@ def post_sala():
 @app.route('/sala/<int:id_sala>', methods=['GET'])
 @login_required
 @admin_required
+@check_integrity({''})
 def get_sala(id_sala):
     sala = Sala.query.filter_by(id=id_sala).first()
     if not sala:
@@ -1035,6 +1051,7 @@ def get_sala(id_sala):
 @app.route('/sala/<int:id_sala>', methods=['PUT'])
 @login_required
 @admin_required
+@fetch_datarequest
 def put_sala(id_sala):
     sala = Sala.query.filter_by(id=id_sala).first()
     if not sala:

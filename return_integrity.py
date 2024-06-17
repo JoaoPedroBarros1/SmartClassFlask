@@ -83,3 +83,11 @@ def check_cargo_put(func):
 
         return func(*args, **kwargs)
     return cargo_wrap
+
+
+def fetch_datarequest(func):
+    @wraps(func)
+    def datarequest_wrap(*args, **kwargs):
+        g.data_request = request.json
+        return func(*args, **kwargs)
+    return datarequest_wrap
