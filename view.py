@@ -9,6 +9,7 @@ from flask import jsonify, g
 import jwt
 import requests
 import datetime
+from typing import List
 
 
 # -------------- DEBUG --------------
@@ -112,10 +113,16 @@ def get_reposicoes():
 @admin_required
 @check_integrity({'data', 'id_curso', 'id_feriado'})
 def post_reposicao():
+    repo_data = g.data_request['data']
+    repo_id_curso = g.data_request['id_curso']
+    repo_id_feriado = g.data_request['id_feriado']
+
+
+
     nova_reposicao = Reposicao(
-        data=g.data_request['data'],
-        id_curso=g.data_request['id_curso'],
-        id_feriado=g.data_request['id_feriado']
+        data=repo_data,
+        id_curso=repo_id_curso,
+        id_feriado=repo_id_feriado
     )
 
     db.session.add(nova_reposicao)
@@ -123,7 +130,7 @@ def post_reposicao():
 
     return jsonify(
         mensagem='Reposição criada com sucesso'
-    )
+    ), 201
 
 
 @app.route("/reposicao/<int:id_reposicao>", methods=['GET'])
@@ -677,6 +684,94 @@ def delete_usuario(id_usuario):
 # -------------------- CURSOS ----------------------
 
 
+@app.route('/profs_disp', methods=['POST'])
+@login_required
+@admin_required
+@check_integrity({'carga_horaria', 'start_curso',
+                  'end_curso', 'dias_da_semana', 'data_de_inicio'
+                  })
+def profs_disp():
+    novo_curso = Curso(
+        nome='Novo curso',
+        carga_horaria=g.data_request['carga_horaria'],
+        start_curso=g.data_request['start_curso'],
+        end_curso=g.data_request['end_curso'],
+        dias_da_semana=g.data_request['dias_da_semana'],
+        data_de_inicio=g.data_request['data_de_inicio'],
+        id_professor=0,
+        id_sala=0
+    )
+
+    aulas = return_aulas(novo_curso)
+
+    novo_start_curso: datetime.time = datetime.time.fromisoformat(novo_curso.start_curso)
+    novo_end_curso: datetime.time = datetime.time.fromisoformat(novo_curso.end_curso)
+
+    professores: List[Professor] = Professor.query.all()
+    professores_dict = []
+    for prof in professores:
+        _curso_dias_da_semana_: set = set(return_weekdays(novo_curso.dias_da_semana)['list'])
+        _professor_dia_da_semana_: set = set(return_weekdays(prof.dias_da_semana)['list'])
+        _days_difference_set_: set = _curso_dias_da_semana_.difference(_professor_dia_da_semana_)
+        if _days_difference_set_:
+            continue
+
+        for __curso in prof.cursos:
+            if _curso_dias_da_semana_.intersection(set(return_weekdays(__curso.dias_da_semana)['list'])):
+                if not (novo_end_curso < __curso.start_curso or novo_start_curso > __curso.end_curso):
+                    current_curso_letivos = return_aulas(__curso)
+                    if (current_curso_letivos['aulas_set'].intersection(aulas['aulas_set']) or
+                            current_curso_letivos['reposicoes_set'].intersection(aulas['aulas_set'])):
+                        continue
+
+        professores_dict.append(return_professor(prof, False, False))
+
+    return jsonify(
+        mensagem="Professores disponíveis", response=professores_dict
+    ), 200
+
+
+@app.route('/salas_disp', methods=['POST'])
+@login_required
+@admin_required
+@check_integrity({'carga_horaria', 'start_curso',
+                  'end_curso', 'dias_da_semana', 'data_de_inicio'
+                  })
+def salas_disp():
+    novo_curso = Curso(
+        nome='Novo curso',
+        carga_horaria=g.data_request['carga_horaria'],
+        start_curso=g.data_request['start_curso'],
+        end_curso=g.data_request['end_curso'],
+        dias_da_semana=g.data_request['dias_da_semana'],
+        data_de_inicio=g.data_request['data_de_inicio'],
+        id_professor=0,
+        id_sala=0
+    )
+
+    aulas = return_aulas(novo_curso)
+
+    novo_start_curso: datetime.time = datetime.time.fromisoformat(novo_curso.start_curso)
+    novo_end_curso: datetime.time = datetime.time.fromisoformat(novo_curso.end_curso)
+
+    _curso_dias_da_semana_: set = set(return_weekdays(novo_curso.dias_da_semana)['list'])
+
+    salas: List[Sala] = Sala.query.all()
+    salas_dict = []
+    for sala in salas:
+        for __curso in sala.cursos:
+            if _curso_dias_da_semana_.intersection(set(return_weekdays(__curso.dias_da_semana)['list'])):
+                if not (novo_end_curso < __curso.start_curso or novo_start_curso > __curso.end_curso):
+                    if return_aulas(__curso)['aulas_set'].intersection(aulas['aulas_set']):
+                        continue
+
+        salas_dict.append(return_sala(sala, False, False))
+
+    return jsonify(
+        mensagem="Salas disponíveos", response=salas_dict
+    ), 200
+
+
 @app.route("/curso", methods=['GET'])
 @login_required
 @admin_required
@@ -720,7 +815,7 @@ def post_curso():
     novo_start_curso: datetime.time = datetime.time.fromisoformat(novo_curso.start_curso)
     novo_end_curso: datetime.time = datetime.time.fromisoformat(novo_curso.end_curso)
 
-    if novo_end_curso < novo_start_curso:
+    if novo_end_curso <= novo_start_curso:
         return jsonify(mensagem="Horário de término é menor que horário de início"), 400
 
     professor: Professor = Professor.query.filter_by(id=novo_curso.id_professor).first()
@@ -735,8 +830,8 @@ def post_curso():
             or novo_end_curso > professor.end_turno):
         return jsonify(mensagem="Horário do curso não está no período de aula do professor"), 400
 
-    _curso_dias_da_semana_ : set = set(return_weekdays(novo_curso.dias_da_semana)['list'])
-    _professor_dia_da_semana_ : set = set(return_weekdays(professor.dias_da_semana)['list'])
+    _curso_dias_da_semana_: set = set(return_weekdays(novo_curso.dias_da_semana)['list'])
+    _professor_dia_da_semana_: set = set(return_weekdays(professor.dias_da_semana)['list'])
     _days_difference_set_: set = _curso_dias_da_semana_.difference(_professor_dia_da_semana_)
     if _days_difference_set_:
         return jsonify(mensagem=f"Professor não trabalha nos dias: {', '.join(_days_difference_set_)}"), 400
@@ -816,7 +911,51 @@ def put_curso(id_curso):
 
     if 'id_sala' in g.data_request:
         curso.id_sala = g.data_request['id_sala']
-    
+
+    aulas = return_aulas(curso)
+
+    novo_start_curso: datetime.time = datetime.time.fromisoformat(curso.start_curso)
+    novo_end_curso: datetime.time = datetime.time.fromisoformat(curso.end_curso)
+
+    if novo_end_curso <= novo_start_curso:
+        return jsonify(mensagem="Horário de término é menor que horário de início"), 400
+
+    professor: Professor = Professor.query.filter_by(id=curso.id_professor).first()
+    if not professor:
+        return jsonify(mensagem='Professor não existe'), 400
+
+    sala: Sala = Sala.query.filter_by(id=curso.id_sala).first()
+    if not sala:
+        return jsonify(mensagem='Sala não existe'), 400
+
+    if (novo_start_curso < professor.start_turno
+            or novo_end_curso > professor.end_turno):
+        return jsonify(mensagem="Horário do curso não está no período de aula do professor"), 400
+
+    _curso_dias_da_semana_: set = set(return_weekdays(curso.dias_da_semana)['list'])
+    _professor_dia_da_semana_: set = set(return_weekdays(professor.dias_da_semana)['list'])
+    _days_difference_set_: set = _curso_dias_da_semana_.difference(_professor_dia_da_semana_)
+    if _days_difference_set_:
+        return jsonify(mensagem=f"Professor não trabalha nos dias: {', '.join(_days_difference_set_)}"), 400
+
+    for __curso in sala.cursos:
+        if _curso_dias_da_semana_.intersection(set(return_weekdays(__curso.dias_da_semana)['list'])):
+            if not (novo_end_curso < __curso.start_curso or novo_start_curso > __curso.end_curso):
+                if return_aulas(__curso)['aulas_set'].intersection(aulas['aulas_set']):
+                    return jsonify(
+                        mensagem=f"A sala {sala.nome} já está sendo utilizada pelo curso {__curso.nome}"
+                    ), 400
+
+    for __curso in professor.cursos:
+        if _curso_dias_da_semana_.intersection(set(return_weekdays(__curso.dias_da_semana)['list'])):
+            if not (novo_end_curso < __curso.start_curso or novo_start_curso > __curso.end_curso):
+                current_curso_letivos = return_aulas(__curso)
+                if (current_curso_letivos['aulas_set'].intersection(aulas['aulas_set']) or
+                        current_curso_letivos['reposicoes_set'].intersection(aulas['aulas_set'])):
+                    return jsonify(
+                        mensagem=f"O professor {professor.usuario.nome} estará ocupado no curso {__curso.nome}"
+                    ), 400
+
     db.session.commit()
 
     return jsonify(
@@ -833,7 +972,7 @@ def put_curso(id_curso):
 @login_required
 @admin_required
 def delete_curso(id_curso):
-    curso = Curso.query.filter_by(id=id_curso)
+    curso: Curso = Curso.query.filter_by(id=id_curso).first()
     if not curso:
         return jsonify(mensagem='Curso não encontrado'), 404
 
@@ -942,16 +1081,15 @@ def delete_sala(id_sala):
 @login_required
 @admin_required
 def get_matriculas():
-    matriculas = Matricula.query.all()
-
+    matriculas = db.session.query(Matricula).all()
     if not matriculas:
         return jsonify(mensagem='Não há matrículas cadastradas'), 404
 
     matriculas_dic = []
     for matricula in matriculas:
         matricula_dic = {
-            'id_usuario': matricula.id_usuario,
-            'id_curso': matricula.id_curso
+            'id_usuario': matricula[0],
+            'id_curso': matricula[1]
         }
         matriculas_dic.append(matricula_dic)
 
