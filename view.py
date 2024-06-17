@@ -133,7 +133,7 @@ def get_reposicao(id_reposicao):
     reposicao = Reposicao.query.filter_by(id=id_reposicao)
 
     if not reposicao:
-        return jsonify(mensagem='Reposição não encontrada')
+        return jsonify(mensagem='Reposição não encontrada'), 404
 
     return jsonify(
         mensagem='Informações da reposição',
@@ -190,7 +190,7 @@ def get_emendas():
 
     emendas_dic = []
     for emenda in emendas:
-        nao_letivo_dic = return_emenda(emenda, g.is_admin, True)
+        nao_letivo_dic = return_emenda(emenda, True)
         emendas_dic.append(nao_letivo_dic)
 
     return jsonify(
@@ -210,7 +210,7 @@ def get_emenda(id_emenda):
 
     return jsonify(
         mensagem='Informações da emenda',
-        response=return_emenda(emenda, True, True)
+        response=return_emenda(emenda, True)
     ), 200
 
 
@@ -230,7 +230,7 @@ def put_emenda(id_emenda):
 
     return jsonify(
         mensagem='Emenda atualizada com sucesso',
-        response=return_emenda(emenda, True, True)
+        response=return_emenda(emenda, True)
     ), 200
 
 
@@ -280,7 +280,7 @@ def get_feriados():
 
     feriados_list = []
     for feriado in feriados:
-        feriado_dict = return_feriado(feriado, g.is_admin)
+        feriado_dict = return_feriado(feriado)
         feriados_list.append(feriado_dict)
         
     return jsonify(mensagem="Todos os feriados cadastrados", response=feriados_list), 200
@@ -294,7 +294,7 @@ def get_feriado(id_feriado):
     if not feriado:
         return jsonify(mensagem="Feriado não encontrado"), 404
 
-    feriado_dict = return_feriado(feriado, True)
+    feriado_dict = return_feriado(feriado)
 
     return jsonify(mensagem="Feriado encontrado", response=feriado_dict), 200
 
@@ -354,19 +354,19 @@ def put_feriado(id_feriado):
                 case 2:
                     day_before = feriado_datetime - datetime.timedelta(1)
                     feriado.emenda.data = day_before
-                    feriado_dict.update(return_emenda(feriado.emenda, True, False))
+                    feriado_dict.update(return_emenda(feriado.emenda, True))
 
                 case 4:
                     day_after = feriado_datetime + datetime.timedelta(1)
                     feriado.emenda.data = day_after
-                    feriado_dict.update(return_emenda(feriado.emenda, True, False))
+                    feriado_dict.update(return_emenda(feriado.emenda, True))
 
                 case _:
                     db.session.delete(feriado.emenda)
 
     db.session.commit()
 
-    feriado_dict.update(return_feriado(feriado, True))
+    feriado_dict.update(return_feriado(feriado))
 
     return jsonify(mensagem="Feriado atualizado com sucesso", response=feriado_dict)
 
@@ -715,6 +715,14 @@ def post_curso():
         id_sala=g.data_request['id_sala']
     )
 
+    aulas = return_aulas(novo_curso)
+
+    novo_start_curso: datetime.time = datetime.time.fromisoformat(novo_curso.start_curso)
+    novo_end_curso: datetime.time = datetime.time.fromisoformat(novo_curso.end_curso)
+
+    if novo_end_curso < novo_start_curso:
+        return jsonify(mensagem="Horário de término é menor que horário de início"), 400
+
     professor: Professor = Professor.query.filter_by(id=novo_curso.id_professor).first()
     if not professor:
         return jsonify(mensagem='Professor não existe'), 400
@@ -723,30 +731,43 @@ def post_curso():
     if not sala:
         return jsonify(mensagem='Sala não existe'), 400
 
-    if (datetime.time.fromisoformat(novo_curso.start_curso) < professor.start_turno
-            or datetime.time.fromisoformat(novo_curso.end_curso) > professor.end_turno):
+    if (novo_start_curso < professor.start_turno
+            or novo_end_curso > professor.end_turno):
         return jsonify(mensagem="Horário do curso não está no período de aula do professor"), 400
 
-    _days_difference_set_: set = (set(return_weekdays(novo_curso.dias_da_semana)['list']).difference(
-        set(return_weekdays(professor.dias_da_semana)['list'])))
+    _curso_dias_da_semana_ : set = set(return_weekdays(novo_curso.dias_da_semana)['list'])
+    _professor_dia_da_semana_ : set = set(return_weekdays(professor.dias_da_semana)['list'])
+    _days_difference_set_: set = _curso_dias_da_semana_.difference(_professor_dia_da_semana_)
     if _days_difference_set_:
         return jsonify(mensagem=f"Professor não trabalha nos dias: {', '.join(_days_difference_set_)}"), 400
 
-    # Checar se a sala já está ocupada nesse horário
-    # Checar se o professor já está ocupado nesse horário
-    current_dias = return_weekdays(novo_curso.dias_da_semana)
-    for curso in sala.cursos:
-        print(curso)
+    for __curso in sala.cursos:
+        if _curso_dias_da_semana_.intersection(set(return_weekdays(__curso.dias_da_semana)['list'])):
+            if not (novo_end_curso < __curso.start_curso or novo_start_curso > __curso.end_curso):
+                if return_aulas(__curso)['aulas_set'].intersection(aulas['aulas_set']):
+                    return jsonify(
+                        mensagem=f"A sala {sala.nome} já está sendo utilizada pelo curso {__curso.nome}"
+                    ), 400
 
-    # db.session.add(novo_curso)
-    # db.session.commit()
+    for __curso in professor.cursos:
+        if _curso_dias_da_semana_.intersection(set(return_weekdays(__curso.dias_da_semana)['list'])):
+            if not (novo_end_curso < __curso.start_curso or novo_start_curso > __curso.end_curso):
+                current_curso_letivos = return_aulas(__curso)
+                if (current_curso_letivos['aulas_set'].intersection(aulas['aulas_set']) or
+                        current_curso_letivos['reposicoes_set'].intersection(aulas['aulas_set'])):
+                    return jsonify(
+                        mensagem=f"O professor {professor.usuario.nome} estará ocupado no curso {__curso.nome}"
+                    ), 400
+
+    db.session.add(novo_curso)
+    db.session.commit()
 
     return jsonify(
         mensagem='Curso Cadastrado com Sucesso'
     ), 201
 
 
-@app.route('/curso<int:id_curso>', methods=['GET'])
+@app.route('/curso/<int:id_curso>', methods=['GET'])
 @login_required
 @admin_required
 def get_curso(id_curso):
@@ -774,18 +795,25 @@ def put_curso(id_curso):
 
     if 'nome' in g.data_request:
         curso.nome = g.data_request['nome']
+
     if 'carga_horaria' in g.data_request:
         curso.carga_horaria = g.data_request['carga_horaria']
+
     if 'start_curso' in g.data_request:
         curso.start_curso = g.data_request['start_curso']
+
     if 'end_curso' in g.data_request:
         curso.end_curso = g.data_request['end_curso']
+
     if 'dias_da_semana' in g.data_request:
         curso.dias_da_semana = g.data_request['dias_da_semana']
+
     if 'data_de_inicio' in g.data_request:
         curso.data_de_inicio = g.data_request['data_de_inicio']
+
     if 'id_professor' in g.data_request:
         curso.id_professor = g.data_request['id_professor']
+
     if 'id_sala' in g.data_request:
         curso.id_sala = g.data_request['id_sala']
     
@@ -917,7 +945,7 @@ def get_matriculas():
     matriculas = Matricula.query.all()
 
     if not matriculas:
-        return jsonify(mensagem='Não há matrículas cadastradas')
+        return jsonify(mensagem='Não há matrículas cadastradas'), 404
 
     matriculas_dic = []
     for matricula in matriculas:
@@ -945,6 +973,9 @@ def post_matricula():
     local_curso = Curso.query.filter_by(id=g.data_request['id_curso']).first()
     if not local_curso:
         return jsonify(mensagem='Curso não encontrado'), 404
+
+    if local_curso in local_aluno.cursos:
+        return jsonify(mensagem="Aluno já cadastrado no curso"), 400
 
     local_aluno.cursos.append(local_curso)
     db.session.commit()

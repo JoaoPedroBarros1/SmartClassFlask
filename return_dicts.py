@@ -1,10 +1,12 @@
+import datetime
+
 from dateutil.parser import parse
 from math import ceil
 from models import *
 
 
 def return_weekdays(dias_da_semana: int) -> dict:
-    int_dias_semana = dias_da_semana
+    int_dias_semana = 0
 
     class WeekDays(enum.IntEnum):
         SABADO = 64
@@ -26,6 +28,7 @@ def return_weekdays(dias_da_semana: int) -> dict:
         weekdays_names.append("Sat")
         weekdays_bool.append(True)
         weekdays_iso.append(6)
+        int_dias_semana += 1
     else:
         weekdays_bool.append(False)
 
@@ -35,6 +38,7 @@ def return_weekdays(dias_da_semana: int) -> dict:
         weekdays_names.append("Fri")
         weekdays_bool.append(True)
         weekdays_iso.append(5)
+        int_dias_semana += 1
     else:
         weekdays_bool.append(False)
 
@@ -44,6 +48,7 @@ def return_weekdays(dias_da_semana: int) -> dict:
         weekdays_names.append("Thu")
         weekdays_bool.append(True)
         weekdays_iso.append(4)
+        int_dias_semana += 1
     else:
         weekdays_bool.append(False)
 
@@ -53,6 +58,7 @@ def return_weekdays(dias_da_semana: int) -> dict:
         weekdays_names.append("Wed")
         weekdays_bool.append(True)
         weekdays_iso.append(3)
+        int_dias_semana += 1
     else:
         weekdays_bool.append(False)
 
@@ -62,6 +68,7 @@ def return_weekdays(dias_da_semana: int) -> dict:
         weekdays_names.append("Tue")
         weekdays_bool.append(True)
         weekdays_iso.append(2)
+        int_dias_semana += 1
     else:
         weekdays_bool.append(False)
 
@@ -71,6 +78,7 @@ def return_weekdays(dias_da_semana: int) -> dict:
         weekdays_names.append("Mon")
         weekdays_bool.append(True)
         weekdays_iso.append(1)
+        int_dias_semana += 1
     else:
         weekdays_bool.append(False)
 
@@ -80,6 +88,7 @@ def return_weekdays(dias_da_semana: int) -> dict:
         weekdays_names.append("Sun")
         weekdays_bool.append(True)
         weekdays_iso.append(0)
+        int_dias_semana += 1
     else:
         weekdays_bool.append(False)
 
@@ -88,12 +97,18 @@ def return_weekdays(dias_da_semana: int) -> dict:
     weekdays_bool.reverse()
     weekdays_iso.reverse()
 
+    days_interval = []
+    for iso_n in range(1, len(weekdays_iso)):
+        days_interval.append((weekdays_iso[iso_n] + 6 - weekdays_iso[iso_n - 1]) % 7 + 1)
+    days_interval.append((weekdays_iso[0] + 7 - weekdays_iso[-1]) % 7)
+
     weekdays_dict = {
         'num': int_dias_semana,
         'list': weekdays_list,
         'names': weekdays_names,
         'bool': weekdays_bool,
-        'iso_days': weekdays_iso
+        'iso_days': weekdays_iso,
+        'days_interval': days_interval
     }
 
     return weekdays_dict
@@ -108,7 +123,12 @@ def return_sala(sala: Sala, admin: bool, curso_recursive: bool) -> dict:
     if curso_recursive:
         curso_list = []
         for curso in sala.cursos:
-            curso_list.append(return_curso(curso, admin, True, True, False, True))
+            curso_list.append(return_curso(curso,
+                                           admin,
+                                           True,
+                                           True,
+                                           False,
+                                           True))
         sala_dict.update({
             'cursos': curso_list
         })
@@ -203,10 +223,10 @@ def return_curso(curso: Curso, admin: bool,
     curso_dict = {
         'id': curso.id,
         'nome': curso.nome,
-        'data_de_inicio': curso.data_de_inicio,
+        'data_de_inicio': str(curso.data_de_inicio),
         'carga_horaria': curso.carga_horaria,
-        'start_curso': curso.start_curso,
-        'end_curso': curso.end_curso,
+        'start_curso': str(curso.start_curso),
+        'end_curso': str(curso.end_curso),
         'dias_da_semana': return_weekdays(curso.dias_da_semana)
     }
 
@@ -236,35 +256,19 @@ def return_curso(curso: Curso, admin: bool,
             'professor': return_professor(curso.professor, admin, False)
         })
 
-    aulas = []
-    all_feriados = []
-    # Como pegar todas as aulas?
-    # Pegar o tempo total de cada dia de curso, dividir a carga horaria por ele para ter a quantia de dias
-    # Pegar o primeiro dia que vai ter aula depois do 'data_de_inicio' (usar um for com o weekday())
-
-    _total_dias_ = ceil(curso.carga_horaria/(curso.end_curso - curso.start_curso))
-    _dia_index_ = 0
-    _current_date_ = curso.data_de_inicio
-    _weekday_offset_ = 0
-    while _dia_index_ < _total_dias_:
-        print(f"Dia {_dia_index_}")
-        _dia_index_ += 1
-
-    dias_por_semana = 0
-    for _dia in curso_dict['dias_da_semana']['bool']:
-        dias_por_semana += _dia
+    dias_letivos = return_aulas(curso)
 
     curso_dict.update({
-        'aulas': aulas,
-        'feriados': all_feriados,
-        'qtd_feriados': len(all_feriados),
+        'aulas': dias_letivos['aulas'],
+        'feriados': dias_letivos['feriados'],
+        'qtd_feriados': len(dias_letivos['feriados']),
         'qtd_reposicoes': len(curso.reposicoes)
     })
 
     return curso_dict
 
 
-def return_emenda(emenda: Emenda, admin: bool, feriado_recursive: bool) -> dict:
+def return_emenda(emenda: Emenda, feriado_recursive: bool) -> dict:
     emenda_dict = {
         'id': emenda.id,
         'nome': emenda.feriado.nome,
@@ -279,7 +283,7 @@ def return_emenda(emenda: Emenda, admin: bool, feriado_recursive: bool) -> dict:
     return emenda_dict
 
 
-def return_feriado(feriado: Feriado, admin: bool) -> dict:
+def return_feriado(feriado: Feriado) -> dict:
     data = parse(str(feriado.data))
     feriado_dict = {
         'id': feriado.id,
@@ -288,7 +292,7 @@ def return_feriado(feriado: Feriado, admin: bool) -> dict:
     }
 
     if feriado.emenda:
-        feriado_dict.update(return_emenda(feriado.emenda, admin, False))
+        feriado_dict.update(return_emenda(feriado.emenda, False))
 
     return feriado_dict
 
@@ -306,3 +310,39 @@ def return_reposicao(reposicao: Reposicao, admin: bool, curso_recursive: bool) -
         })
 
     return reposicao_dict
+
+
+def return_aulas(curso: Curso) -> dict:
+    time_start_curso = datetime.datetime.combine(datetime.date.today(), datetime.time.fromisoformat(str(curso.start_curso)))
+    time_end_curso = datetime.datetime.combine(datetime.date.today(), datetime.time.fromisoformat(str(curso.end_curso)))
+    time_delta = (time_end_curso - time_start_curso).total_seconds() / 3600
+    total_days: int = ceil(curso.carga_horaria/time_delta)
+
+    _data_inicio: datetime.date = datetime.date.fromisoformat(str(curso.data_de_inicio))
+
+    dias_semana_dict = return_weekdays(curso.dias_da_semana)
+    _days_offset = 0
+    for num in dias_semana_dict['iso_days']:
+        if num >= _data_inicio.isoweekday():
+            break
+        else:
+            _days_offset += 1
+
+    _first_day_offset = (_data_inicio.isoweekday() + 7 - dias_semana_dict['iso_days'][_days_offset]) % 7
+    first_day = _data_inicio + datetime.timedelta(days=_first_day_offset)
+    aulas_days = set()
+    for i in range(total_days):
+        day_offset = dias_semana_dict['days_interval'][(i + _days_offset) % len(dias_semana_dict['days_interval'])]
+        first_day += datetime.timedelta(days=day_offset)
+        aulas_days.update([first_day.isoformat()])
+
+    feriados_days = {str(x.data) for x in Feriado.query.all()}
+    feriados_days.update({str(x.data) for x in Emenda.query.all()})
+
+    feriados_days.intersection_update(aulas_days)
+    aulas_days.difference_update(feriados_days)
+
+    return {'aulas': list(aulas_days),
+            'feriados': list(feriados_days),
+            'aulas_set': aulas_days,
+            'feriados_set': feriados_days}
