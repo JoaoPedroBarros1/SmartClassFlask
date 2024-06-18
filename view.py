@@ -929,10 +929,7 @@ def put_curso(id_curso):
 
     aulas = return_aulas(curso)
 
-    novo_start_curso: datetime.time = datetime.time.fromisoformat(curso.start_curso)
-    novo_end_curso: datetime.time = datetime.time.fromisoformat(curso.end_curso)
-
-    if novo_end_curso <= novo_start_curso:
+    if curso.end_curso <= curso.start_curso:
         return jsonify(mensagem="Horário de término é menor que horário de início"), 400
 
     professor: Professor = Professor.query.filter_by(id=curso.id_professor).first()
@@ -943,8 +940,8 @@ def put_curso(id_curso):
     if not sala:
         return jsonify(mensagem='Sala não existe'), 400
 
-    if (novo_start_curso < professor.start_turno
-            or novo_end_curso > professor.end_turno):
+    if (curso.start_curso < professor.start_turno
+            or curso.end_curso > professor.end_turno):
         return jsonify(mensagem="Horário do curso não está no período de aula do professor"), 400
 
     _curso_dias_da_semana_: set = set(return_weekdays(curso.dias_da_semana)['list'])
@@ -954,16 +951,22 @@ def put_curso(id_curso):
         return jsonify(mensagem=f"Professor não trabalha nos dias: {', '.join(_days_difference_set_)}"), 400
 
     for __curso in sala.cursos:
+        if __curso.id == curso.id:
+            continue
+
         if _curso_dias_da_semana_.intersection(set(return_weekdays(__curso.dias_da_semana)['list'])):
-            if not (novo_end_curso <= __curso.start_curso or novo_start_curso >= __curso.end_curso):
+            if not (curso.end_curso <= __curso.start_curso or curso.start_curso >= __curso.end_curso):
                 if return_aulas(__curso)['aulas_set'].intersection(aulas['aulas_set']):
                     return jsonify(
                         mensagem=f"A sala {sala.nome} já está sendo utilizada pelo curso {__curso.nome}"
                     ), 400
 
     for __curso in professor.cursos:
+        if __curso.id == curso.id:
+            continue
+
         if _curso_dias_da_semana_.intersection(set(return_weekdays(__curso.dias_da_semana)['list'])):
-            if not (novo_end_curso <= __curso.start_curso or novo_start_curso >= __curso.end_curso):
+            if not (curso.end_curso <= __curso.start_curso or curso.start_curso >= __curso.end_curso):
                 current_curso_letivos = return_aulas(__curso)
                 if (current_curso_letivos['aulas_set'].intersection(aulas['aulas_set']) or
                         current_curso_letivos['reposicoes_set'].intersection(aulas['aulas_set'])):
@@ -1132,7 +1135,21 @@ def post_matricula():
     if local_curso in local_aluno.cursos:
         return jsonify(mensagem="Aluno já cadastrado no curso"), 400
 
-    local_aluno.cursos.append(local_curso)
+    aulas = return_aulas(local_curso)
+
+    _curso_dias_da_semana_: set = set(return_weekdays(local_curso.dias_da_semana)['list'])
+
+    for __curso in local_aluno.cursos:
+        if _curso_dias_da_semana_.intersection(set(return_weekdays(__curso.dias_da_semana)['list'])):
+            if not (local_curso.end_curso <= __curso.start_curso or local_curso.start_curso >= __curso.end_curso):
+                current_curso_letivos = return_aulas(__curso)
+                if (current_curso_letivos['aulas_set'].intersection(aulas['aulas_set']) or
+                        current_curso_letivos['reposicoes_set'].intersection(aulas['aulas_set'])):
+                    return jsonify(
+                        mensagem=f"{local_aluno.usuario.nome} estará ocupado no curso {__curso.nome}"
+                    ), 400
+
+    # local_aluno.cursos.append(local_curso)
     db.session.commit()
 
     return jsonify(

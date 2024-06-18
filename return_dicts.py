@@ -101,7 +101,7 @@ def return_weekdays(dias_da_semana: int) -> dict:
     days_interval = []
     for iso_n in range(1, len(weekdays_iso)):
         days_interval.append((weekdays_iso[iso_n] + 6 - weekdays_iso[iso_n - 1]) % 7 + 1)
-    days_interval.append((weekdays_iso[0] + 7 - weekdays_iso[-1]) % 7)
+    days_interval.append((weekdays_iso[0] + 6 - weekdays_iso[-1]) % 7 + 1)
 
     weekdays_dict = {
         'num': int_dias_semana,
@@ -331,6 +331,7 @@ def return_aulas(curso: Curso) -> dict:
 
     _first_day_offset = (_data_inicio.isoweekday() + 7 - dias_semana_dict['iso_days'][_days_offset % len(dias_semana_dict['iso_days'])]) % 7
     first_day = _data_inicio + datetime.timedelta(days=_first_day_offset)
+    print(first_day)
     aulas_days = set()
     for i in range(total_days):
         day_offset = dias_semana_dict['days_interval'][(i + _days_offset) % len(dias_semana_dict['days_interval'])]
