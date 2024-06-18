@@ -328,10 +328,12 @@ def return_aulas(curso: Curso) -> dict:
             break
         else:
             _days_offset += 1
+    else:
+        _days_offset = 0
 
-    _first_day_offset = (_data_inicio.isoweekday() + 7 - dias_semana_dict['iso_days'][_days_offset % len(dias_semana_dict['iso_days'])]) % 7
+    _first_day_offset = (dias_semana_dict['iso_days'][_days_offset % len(dias_semana_dict['iso_days'])]
+                         + 7 - _data_inicio.isoweekday()) % 7
     first_day = _data_inicio + datetime.timedelta(days=_first_day_offset)
-    print(first_day)
     aulas_days = set()
     for i in range(total_days):
         day_offset = dias_semana_dict['days_interval'][(i + _days_offset) % len(dias_semana_dict['days_interval'])]
