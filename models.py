@@ -88,14 +88,11 @@ class Feriado(db.Model):
     nome = db.Column(db.String(100), nullable=False)
 
     emenda = db.relationship('Emenda', back_populates='feriado', uselist=False, cascade="all, delete-orphan")
-    reposicoes = db.relationship('Reposicao', back_populates='feriado', uselist=True, cascade="all, delete-orphan")
 
 
 class Reposicao(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     data = db.Column(db.Date, nullable=False)
     id_curso = db.Column(db.Integer, db.ForeignKey('curso.id'), nullable=False)
-    id_feriado = db.Column(db.Integer, db.ForeignKey('feriado.id'), nullable=False)
 
     curso = db.relationship('Curso', back_populates='reposicoes')
-    feriado = db.relationship('Feriado', back_populates='reposicoes')

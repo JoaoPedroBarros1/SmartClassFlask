@@ -111,25 +111,35 @@ def get_reposicoes():
 @app.route("/reposicao", methods=['POST'])
 @login_required
 @admin_required
-@check_integrity({'data', 'id_curso', 'id_feriado'})
+@check_integrity({'data', 'id_curso'})
 def post_reposicao():
     repo_data = g.data_request['data']
     repo_id_curso = g.data_request['id_curso']
-    repo_id_feriado = g.data_request['id_feriado']
 
     curso: Curso = Curso.query.filter_by(id=repo_id_curso).first()
     if not curso:
         return jsonify(mensagem="Curso não existe"), 404
 
-    feriado: Feriado = Feriado.query.filter_by(id=repo_id_feriado).first()
-    if not feriado:
-        return jsonify(mensagem="Feriado não existe"), 404
-
     nova_reposicao = Reposicao(
         data=repo_data,
-        id_curso=repo_id_curso,
-        id_feriado=repo_id_feriado
+        id_curso=repo_id_curso
     )
+
+    feriado_mesma_data = Feriado.query.filter_by(data=nova_reposicao.data).first()
+    if feriado_mesma_data:
+        return jsonify(mensagem='Há um feriado que impossibilita essa reposição'), 400
+
+    emenda_mesma_data = Emenda.query.filter_by(data=nova_reposicao.data, emenda=1).first()
+    if emenda_mesma_data:
+        return jsonify(mensagem='Há uma emenda que impossibilita essa reposição'), 400
+
+    for _curso in curso.sala.cursos:
+        if nova_reposicao.data in return_aulas(_curso)['aulas_set']:
+            return jsonify(mensagem=f'Sala estará ocupada pelo curso {_curso.nome}'), 400
+
+    for _curso in curso.professor.cursos:
+        if nova_reposicao.data in return_aulas(_curso)['aulas_set']:
+            return jsonify(mensagem=f'Professor estará ocupado no curso {_curso.nome}'), 400
 
     db.session.add(nova_reposicao)
     db.session.commit()
@@ -168,6 +178,22 @@ def put_reposicao(id_reposicao):
 
     if 'id_curso' in g.data_request:
         reposicao.id_curso = g.data_request['id_curso']
+
+    feriado_mesma_data = Feriado.query.filter_by(data=reposicao.data).first()
+    if feriado_mesma_data:
+        return jsonify(mensagem='Há um feriado que impossibilita essa reposição'), 400
+
+    emenda_mesma_data = Emenda.query.filter_by(data=reposicao.data, emenda=1).first()
+    if emenda_mesma_data:
+        return jsonify(mensagem='Há uma emenda que impossibilita essa reposição'), 400
+
+    for _curso in reposicao.curso.sala.cursos:
+        if reposicao.data in return_aulas(_curso)['aulas_set']:
+            return jsonify(mensagem=f'Sala estará ocupada pelo curso {_curso.nome}'), 400
+
+    for _curso in reposicao.curso.professor.cursos:
+        if reposicao.data in return_aulas(_curso)['aulas_set']:
+            return jsonify(mensagem=f'Professor estará ocupado no curso {_curso.nome}'), 400
 
     db.session.commit()
 
