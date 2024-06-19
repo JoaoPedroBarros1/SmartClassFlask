@@ -134,12 +134,14 @@ def post_reposicao():
         return jsonify(mensagem='Há uma emenda que impossibilita essa reposição'), 400
 
     for _curso in curso.sala.cursos:
-        if nova_reposicao.data in return_aulas(_curso)['aulas_set']:
-            return jsonify(mensagem=f'Sala estará ocupada pelo curso {_curso.nome}'), 400
+        if not (curso.end_curso <= _curso.start_curso or curso.start_curso >= _curso.end_curso):
+            if nova_reposicao.data in return_aulas(_curso)['aulas_set']:
+                return jsonify(mensagem=f'Sala estará ocupada pelo curso {_curso.nome}'), 400
 
     for _curso in curso.professor.cursos:
-        if nova_reposicao.data in return_aulas(_curso)['aulas_set']:
-            return jsonify(mensagem=f'Professor estará ocupado no curso {_curso.nome}'), 400
+        if not (curso.end_curso <= _curso.start_curso or curso.start_curso >= _curso.end_curso):
+            if nova_reposicao.data in return_aulas(_curso)['aulas_set']:
+                return jsonify(mensagem=f'Professor estará ocupado no curso {_curso.nome}'), 400
 
     db.session.add(nova_reposicao)
     db.session.commit()
@@ -188,12 +190,14 @@ def put_reposicao(id_reposicao):
         return jsonify(mensagem='Há uma emenda que impossibilita essa reposição'), 400
 
     for _curso in reposicao.curso.sala.cursos:
-        if reposicao.data in return_aulas(_curso)['aulas_set']:
-            return jsonify(mensagem=f'Sala estará ocupada pelo curso {_curso.nome}'), 400
+        if not (reposicao.curso.end_curso <= _curso.start_curso or reposicao.curso.start_curso >= _curso.end_curso):
+            if reposicao.data in return_aulas(_curso)['aulas_set']:
+                return jsonify(mensagem=f'Sala estará ocupada pelo curso {_curso.nome}'), 400
 
     for _curso in reposicao.curso.professor.cursos:
-        if reposicao.data in return_aulas(_curso)['aulas_set']:
-            return jsonify(mensagem=f'Professor estará ocupado no curso {_curso.nome}'), 400
+        if not (reposicao.curso.end_curso <= _curso.start_curso or reposicao.curso.start_curso >= _curso.end_curso):
+            if reposicao.data in return_aulas(_curso)['aulas_set']:
+                return jsonify(mensagem=f'Professor estará ocupado no curso {_curso.nome}'), 400
 
     db.session.commit()
 
@@ -656,8 +660,6 @@ def put_usuario(id_usuario):
                         or curso['end_curso'] > g.data_request['end_curso']):
                     return jsonify(mensagem="Horários de curso conflitantes com horário do professor", curso=curso), 400
 
-
-
             if 'start_turno' in g.data_request:
                 usuario.professor.start_turno = g.data_request['start_turno']
 
@@ -666,6 +668,13 @@ def put_usuario(id_usuario):
 
             if 'dias_da_semana' in g.data_request:
                 usuario.professor.dias_da_semana = int(g.data_request['dias_da_semana'])
+
+                new_weekdays = set(return_weekdays(usuario.professor.dias_da_semana)['iso_days'])
+                for _curso in usuario.professor.cursos:
+                    if set(return_weekdays(_curso.dias_da_semana)['iso_days']).difference(new_weekdays):
+                        return jsonify(mensagem=
+                            f'Impossível modificar dias que professor trabalha, o curso {_curso.nome} necessita dele'
+                                       ), 400
 
             user_response.update(return_professor(usuario.professor, True, True))
 
@@ -1175,7 +1184,7 @@ def post_matricula():
                         mensagem=f"{local_aluno.usuario.nome} estará ocupado no curso {__curso.nome}"
                     ), 400
 
-    # local_aluno.cursos.append(local_curso)
+    local_aluno.cursos.append(local_curso)
     db.session.commit()
 
     return jsonify(
