@@ -125,6 +125,16 @@ def post_reposicao():
         id_curso=repo_id_curso
     )
 
+    curso_info = return_curso(curso,
+                              False,
+                              False,
+                              False,
+                              False,
+                              False)
+
+    if curso_info['qtd_reposicoes'] >= curso_info['qtd_feriados']:
+        return jsonify(mensagem="Quantidade de reposições é maior que quantidade de feriados"), 400
+
     feriado_mesma_data = Feriado.query.filter_by(data=nova_reposicao.data).first()
     if feriado_mesma_data:
         return jsonify(mensagem='Há um feriado que impossibilita essa reposição'), 400
