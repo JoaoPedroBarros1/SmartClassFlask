@@ -2,7 +2,7 @@
 --
 -- Host: 127.0.0.1    Database: gerenciador
 -- ------------------------------------------------------
--- Server version	8.0.37
+-- Server version	5.5.5-10.4.32-MariaDB
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
@@ -23,10 +23,10 @@ DROP TABLE IF EXISTS `aluno`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `aluno` (
-  `id` int NOT NULL,
+  `id` int(11) NOT NULL,
   PRIMARY KEY (`id`),
   CONSTRAINT `aluno_ibfk_1` FOREIGN KEY (`id`) REFERENCES `usuario` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -35,7 +35,7 @@ CREATE TABLE `aluno` (
 
 LOCK TABLES `aluno` WRITE;
 /*!40000 ALTER TABLE `aluno` DISABLE KEYS */;
-INSERT INTO `aluno` VALUES (3),(4),(5);
+INSERT INTO `aluno` VALUES (3),(5),(6),(7),(9),(11);
 /*!40000 ALTER TABLE `aluno` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -47,10 +47,10 @@ DROP TABLE IF EXISTS `coordenador`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `coordenador` (
-  `id` int NOT NULL,
+  `id` int(11) NOT NULL,
   PRIMARY KEY (`id`),
   CONSTRAINT `coordenador_ibfk_1` FOREIGN KEY (`id`) REFERENCES `usuario` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -59,7 +59,7 @@ CREATE TABLE `coordenador` (
 
 LOCK TABLES `coordenador` WRITE;
 /*!40000 ALTER TABLE `coordenador` DISABLE KEYS */;
-INSERT INTO `coordenador` VALUES (1),(8);
+INSERT INTO `coordenador` VALUES (1);
 /*!40000 ALTER TABLE `coordenador` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -71,21 +71,21 @@ DROP TABLE IF EXISTS `curso`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `curso` (
-  `id` int NOT NULL AUTO_INCREMENT,
+  `id` int(11) NOT NULL AUTO_INCREMENT,
   `nome` varchar(100) NOT NULL,
-  `carga_horaria` int DEFAULT NULL,
+  `carga_horaria` int(11) NOT NULL,
   `start_curso` time NOT NULL,
   `end_curso` time NOT NULL,
-  `dias_da_semana` int NOT NULL,
+  `dias_da_semana` int(11) NOT NULL,
   `data_de_inicio` date NOT NULL,
-  `id_professor` int NOT NULL,
-  `id_sala` int NOT NULL,
+  `id_professor` int(11) NOT NULL,
+  `id_sala` int(11) NOT NULL,
   PRIMARY KEY (`id`),
   KEY `id_professor` (`id_professor`),
   KEY `id_sala` (`id_sala`),
   CONSTRAINT `curso_ibfk_1` FOREIGN KEY (`id_professor`) REFERENCES `professor` (`id`),
   CONSTRAINT `curso_ibfk_2` FOREIGN KEY (`id_sala`) REFERENCES `sala` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -94,7 +94,7 @@ CREATE TABLE `curso` (
 
 LOCK TABLES `curso` WRITE;
 /*!40000 ALTER TABLE `curso` DISABLE KEYS */;
-INSERT INTO `curso` VALUES (1,'Desenvolvimento de Sistemas',1200,'07:30:00','17:30:00',6,'2024-01-01',2,1);
+INSERT INTO `curso` VALUES (2,'Vendas',1600,'07:30:00','17:30:00',6,'2025-01-01',2,2),(3,'Logistica',1600,'13:30:00','16:00:00',6,'2024-07-01',4,1),(4,'TI',1600,'08:10:00','16:10:00',13,'2024-06-01',10,3);
 /*!40000 ALTER TABLE `curso` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -106,12 +106,12 @@ DROP TABLE IF EXISTS `emenda`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `emenda` (
-  `id` int NOT NULL,
+  `id` int(11) NOT NULL,
   `emenda` tinyint(1) NOT NULL,
   `data` date NOT NULL,
   PRIMARY KEY (`id`),
   CONSTRAINT `emenda_ibfk_1` FOREIGN KEY (`id`) REFERENCES `feriado` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -120,7 +120,7 @@ CREATE TABLE `emenda` (
 
 LOCK TABLES `emenda` WRITE;
 /*!40000 ALTER TABLE `emenda` DISABLE KEYS */;
-INSERT INTO `emenda` VALUES (2,1,'2024-02-12'),(7,1,'2024-05-31');
+INSERT INTO `emenda` VALUES (2,1,'2024-02-12'),(7,1,'2024-05-31'),(15,1,'2025-03-03'),(19,1,'2025-05-02'),(20,1,'2025-06-20'),(25,1,'2025-11-21'),(26,1,'2025-12-26'),(27,1,'2026-01-02'),(28,1,'2026-02-16'),(31,1,'2026-04-20'),(33,1,'2026-06-05');
 /*!40000 ALTER TABLE `emenda` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -132,11 +132,11 @@ DROP TABLE IF EXISTS `feriado`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `feriado` (
-  `id` int NOT NULL AUTO_INCREMENT,
+  `id` int(11) NOT NULL AUTO_INCREMENT,
   `data` date NOT NULL,
   `nome` varchar(100) NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=14 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=40 DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -145,7 +145,7 @@ CREATE TABLE `feriado` (
 
 LOCK TABLES `feriado` WRITE;
 /*!40000 ALTER TABLE `feriado` DISABLE KEYS */;
-INSERT INTO `feriado` VALUES (1,'2024-01-01','Confraternização mundial'),(2,'2024-02-13','Carnaval'),(3,'2024-03-29','Sexta-feira Santa'),(4,'2024-03-31','Páscoa'),(5,'2024-04-21','Tiradentes'),(6,'2024-05-01','Dia do trabalho'),(7,'2024-05-30','Corpus Christi'),(8,'2024-09-07','Independência do Brasil'),(9,'2024-10-12','Nossa Senhora Aparecida'),(10,'2024-11-02','Finados'),(11,'2024-11-15','Proclamação da República'),(12,'2024-11-20','Dia da consciência negra'),(13,'2024-12-25','Natal');
+INSERT INTO `feriado` VALUES (1,'2024-01-01','Confraternização mundial'),(2,'2024-02-13','Carnaval'),(3,'2024-03-29','Sexta-feira Santa'),(4,'2024-03-31','Páscoa'),(5,'2024-04-21','Tiradentes'),(6,'2024-05-01','Dia do trabalho'),(7,'2024-05-30','Corpus Christi'),(8,'2024-09-07','Independência do Brasil'),(9,'2024-10-12','Nossa Senhora Aparecida'),(10,'2024-11-02','Finados'),(11,'2024-11-15','Proclamação da República'),(12,'2024-11-20','Dia da consciência negra'),(13,'2024-12-25','Natal'),(14,'2025-01-01','Confraternização mundial'),(15,'2025-03-04','Carnaval'),(16,'2025-04-18','Sexta-feira Santa'),(17,'2025-04-20','Páscoa'),(18,'2025-04-21','Tiradentes'),(19,'2025-05-01','Dia do trabalho'),(20,'2025-06-19','Corpus Christi'),(21,'2025-09-07','Independência do Brasil'),(22,'2025-10-12','Nossa Senhora Aparecida'),(23,'2025-11-02','Finados'),(24,'2025-11-15','Proclamação da República'),(25,'2025-11-20','Dia da consciência negra'),(26,'2025-12-25','Natal'),(27,'2026-01-01','Confraternização mundial'),(28,'2026-02-17','Carnaval'),(29,'2026-04-03','Sexta-feira Santa'),(30,'2026-04-05','Páscoa'),(31,'2026-04-21','Tiradentes'),(32,'2026-05-01','Dia do trabalho'),(33,'2026-06-04','Corpus Christi'),(34,'2026-09-07','Independência do Brasil'),(35,'2026-10-12','Nossa Senhora Aparecida'),(36,'2026-11-02','Finados'),(37,'2026-11-15','Proclamação da República'),(38,'2026-11-20','Dia da consciência negra'),(39,'2026-12-25','Natal');
 /*!40000 ALTER TABLE `feriado` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -157,13 +157,13 @@ DROP TABLE IF EXISTS `matricula`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `matricula` (
-  `id_aluno` int NOT NULL,
-  `id_curso` int NOT NULL,
+  `id_aluno` int(11) NOT NULL,
+  `id_curso` int(11) NOT NULL,
   PRIMARY KEY (`id_aluno`,`id_curso`),
   KEY `id_curso` (`id_curso`),
   CONSTRAINT `matricula_ibfk_1` FOREIGN KEY (`id_aluno`) REFERENCES `aluno` (`id`),
   CONSTRAINT `matricula_ibfk_2` FOREIGN KEY (`id_curso`) REFERENCES `curso` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -172,6 +172,7 @@ CREATE TABLE `matricula` (
 
 LOCK TABLES `matricula` WRITE;
 /*!40000 ALTER TABLE `matricula` DISABLE KEYS */;
+INSERT INTO `matricula` VALUES (3,3),(5,3),(6,2),(7,2),(9,3),(11,2);
 /*!40000 ALTER TABLE `matricula` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -183,13 +184,13 @@ DROP TABLE IF EXISTS `professor`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `professor` (
-  `id` int NOT NULL,
+  `id` int(11) NOT NULL,
   `start_turno` time NOT NULL,
   `end_turno` time NOT NULL,
-  `dias_da_semana` int NOT NULL,
+  `dias_da_semana` int(11) NOT NULL,
   PRIMARY KEY (`id`),
   CONSTRAINT `professor_ibfk_1` FOREIGN KEY (`id`) REFERENCES `usuario` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -198,7 +199,7 @@ CREATE TABLE `professor` (
 
 LOCK TABLES `professor` WRITE;
 /*!40000 ALTER TABLE `professor` DISABLE KEYS */;
-INSERT INTO `professor` VALUES (2,'07:30:00','17:30:00',6),(6,'04:00:00','22:00:00',126),(7,'10:00:00','18:00:00',120);
+INSERT INTO `professor` VALUES (2,'07:30:00','17:30:00',6),(4,'06:32:00','16:31:00',127),(10,'05:10:00','17:10:00',127);
 /*!40000 ALTER TABLE `professor` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -210,16 +211,13 @@ DROP TABLE IF EXISTS `reposicao`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `reposicao` (
-  `id` int NOT NULL AUTO_INCREMENT,
+  `id` int(11) NOT NULL AUTO_INCREMENT,
   `data` date NOT NULL,
-  `id_curso` int NOT NULL,
-  `id_feriado` int NOT NULL,
+  `id_curso` int(11) NOT NULL,
   PRIMARY KEY (`id`),
   KEY `id_curso` (`id_curso`),
-  KEY `id_feriado` (`id_feriado`),
-  CONSTRAINT `reposicao_ibfk_1` FOREIGN KEY (`id_curso`) REFERENCES `curso` (`id`),
-  CONSTRAINT `reposicao_ibfk_2` FOREIGN KEY (`id_feriado`) REFERENCES `feriado` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+  CONSTRAINT `reposicao_ibfk_1` FOREIGN KEY (`id_curso`) REFERENCES `curso` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -239,10 +237,10 @@ DROP TABLE IF EXISTS `sala`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `sala` (
-  `id` int NOT NULL AUTO_INCREMENT,
+  `id` int(11) NOT NULL AUTO_INCREMENT,
   `nome` varchar(100) NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -251,7 +249,7 @@ CREATE TABLE `sala` (
 
 LOCK TABLES `sala` WRITE;
 /*!40000 ALTER TABLE `sala` DISABLE KEYS */;
-INSERT INTO `sala` VALUES (1,'Sala1'),(2,'Sala2'),(3,'Sala3');
+INSERT INTO `sala` VALUES (1,'Sala de TI'),(2,'Sala2'),(3,'Sala3');
 /*!40000 ALTER TABLE `sala` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -263,14 +261,14 @@ DROP TABLE IF EXISTS `usuario`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `usuario` (
-  `id` int NOT NULL AUTO_INCREMENT,
+  `id` int(11) NOT NULL AUTO_INCREMENT,
   `email` varchar(100) NOT NULL,
   `senha` varchar(100) NOT NULL,
   `nome` varchar(100) NOT NULL,
   `cargo` enum('Coordenador','Professor','Aluno') NOT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `email` (`email`)
-) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -279,7 +277,7 @@ CREATE TABLE `usuario` (
 
 LOCK TABLES `usuario` WRITE;
 /*!40000 ALTER TABLE `usuario` DISABLE KEYS */;
-INSERT INTO `usuario` VALUES (1,'coordenador@gmail.com','$2b$12$we2LfM/0OWav76X2ec6cwOdCeBLUbULSEH6D90niqrGrMYDpJxgPu','default','Coordenador'),(2,'professor1@gmail.com','$2b$12$JmkopzAH7UnjhxsdSOFnJO.gN/WhR9e50VKV0phZoE9RMII5RIl5S','Prof1','Professor'),(3,'aluno1@gmail.com','$2b$12$8sqdjlAW7B0EHeB0FMqh6eNd0.fCMWSUrStPNXr/roJP2SUNRq2ti','Aluno1','Aluno'),(4,'aluno2@gmail.com','$2b$12$MtnbcMIloLF8NoZi79nVB.KIeZTQCyAs5qqQJgNZU.KPhpNFJ7jU.','Aluno2','Aluno'),(5,'aluno3@gmail.com','$2b$12$UpUNRQRpD3b2JGrvxFDy/epN8mZ5OEYs.lWnuEeCiyyD5X1Xx9MXC','Aluno3','Aluno'),(6,'professor2@gmail.com','$2b$12$8NkP.8pXOvG8KG4odKs7F.wqLI4l43uWZ5c8JhGOy8RfIYzCKGjJe','Prof2','Professor'),(7,'professor3@gmail.com','$2b$12$UxyjYhbb6FdX6DuCifOml.OFctYkiGsaewsBSVd2oFcL1YSoiQvKu','Prof3','Professor'),(8,'coordenador1@gmail.com','$2b$12$4me76akx5LeEVpo/Nu5ySOwSbGGlPPn39AbEMwt.JsD05df0gxg1m','Coor1','Coordenador');
+INSERT INTO `usuario` VALUES (1,'coordenador@gmail.com','$2b$12$yTeLkx06OJewghGNNrm1C.h2XLNmVOPnUA962On2/8q06U2K6D9km','default','Coordenador'),(2,'igor@gmail.com','$2b$12$fyC67EnMJNhUX9B/JwtbOuMx3n2GeqotCtCuEQJBa1FETb9W05JU6','Igor','Professor'),(3,'bianca@gmail.com','$2b$12$ZJb3RITiYuvTl2XtkIH7suKx6MlEGDqMnxF6g/ikigGHrE8LyxQcK','Bianca','Aluno'),(4,'Lais@gmail.com','$2b$12$VBRGM267Mul7.9kfEXbgHegni9XTthpYUgrHHU/TXK1FY1IPMOSbe','Lais','Professor'),(5,'Miguel@gmail.com','$2b$12$uT/CIM0hAxRtzG8uqnuvOOWGF5NHE3KCGzGobiFYt6HtzXHlop1P.','Miguel','Aluno'),(6,'barros@gmail.com','$2b$12$YNZ801Cw8wDSRx9K/m9D6OwRLdIY5aizVyCLjvOmsRDeGANJfFOFW','Barros','Aluno'),(7,'leticia@gmail.com','$2b$12$3wixcybJi.Z.7enqr1ZwF.J8T6S8.mFEYtT1wJDsaDf/EigeZNMOG','leticia','Aluno'),(9,'sanches@gmail.com','$2b$12$u1MKYX4h7vRJw7kYHXeqeudadS319yt0VIEp104UbVHICOKzezbj2','Sanches','Aluno'),(10,'maikola@gmail.com','$2b$12$7tHLYE0loKQh70Y5ub01LuSEuMkGL4DjDQhe3WVVa.0ENDzdw/XOy','maikola','Professor'),(11,'Caue@gmail.com','$2b$12$tNRMWqByysOwTxCxQCAw5.2sC3fbM04LtKoMD3ENOTVP7.JNdtT0K','Caue','Aluno');
 /*!40000 ALTER TABLE `usuario` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
@@ -292,4 +290,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2024-06-16 22:53:54
+-- Dump completed on 2024-06-24 17:25:33
