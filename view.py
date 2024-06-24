@@ -1140,6 +1140,35 @@ def delete_sala(id_sala):
 
 
 # -------------- MATRICULAS --------------
+@app.route("/cursos_disp", methods=['POST'])
+@login_required
+@admin_required
+@check_integrity({'id_usuario'})
+def cursos_disp():
+    local_aluno : Aluno = Aluno.query.filter_by(id=g.data_request['id_usuario']).first()
+    if not local_aluno:
+        return jsonify(mensagem="Aluno não encontrado"), 404
+
+    array_cursos_disp = []
+    for local_curso in Curso.query.all():
+        aulas = return_aulas(local_curso)
+
+        _curso_dias_da_semana_: set = set(return_weekdays(local_curso.dias_da_semana)['list'])
+
+        for __curso in local_aluno.cursos:
+            if _curso_dias_da_semana_.intersection(set(return_weekdays(__curso.dias_da_semana)['list'])):
+                if not (local_curso.end_curso <= __curso.start_curso or local_curso.start_curso >= __curso.end_curso):
+                    current_curso_letivos = return_aulas(__curso)
+                    if (current_curso_letivos['aulas_set'].intersection(aulas['aulas_set']) or
+                            current_curso_letivos['reposicoes_set'].intersection(aulas['aulas_set'])):
+                        continue
+            array_cursos_disp.append(return_curso(local_curso, True, False, False, False, False))
+
+        if not local_aluno.cursos:
+            array_cursos_disp.append(return_curso(local_curso, True, False, False, False, False))
+
+    return jsonify(mensagem="Cursos disponíveis", response=array_cursos_disp), 200
+
 
 
 @app.route("/matricula", methods=['GET'])
