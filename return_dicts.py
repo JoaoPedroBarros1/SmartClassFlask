@@ -336,9 +336,9 @@ def return_aulas(curso: Curso) -> dict:
     first_day = _data_inicio + datetime.timedelta(days=_first_day_offset)
     aulas_days = set()
     for i in range(total_days):
+        aulas_days.update([first_day.isoformat()])
         day_offset = dias_semana_dict['days_interval'][(i + _days_offset) % len(dias_semana_dict['days_interval'])]
         first_day += datetime.timedelta(days=day_offset)
-        aulas_days.update([first_day.isoformat()])
 
     feriados_days = {str(x.data) for x in Feriado.query.all()}
     feriados_days.update({str(x.data) for x in Emenda.query.all() if bool(x.emenda)})
